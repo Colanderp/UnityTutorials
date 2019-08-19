@@ -53,11 +53,6 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    public void LateFixedUpdate()
-    {
-
-    }
-
     public void Move(Vector2 input, bool sprint, bool crouching)
     {
         if(forceTime > 0)
