@@ -116,6 +116,16 @@ public class PlayerMovement : InterpolatedTransform
 
         grounded = (controller.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
     }
+    public void NoClipMove(Vector3 direction, float speed)
+    {
+        if (forceTime > 0)
+            return;
+
+        Vector3 move = direction * speed;
+        moveDirection = move;
+        controller.Move(moveDirection * Time.deltaTime);
+        grounded = false;
+    }
 
     public void Jump(Vector3 dir, float mult)
     {

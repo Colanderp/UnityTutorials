@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum Status { idle, moving, crouching, sliding, climbingLadder, wallRunning, grabbedLedge, climbingLedge, vaulting }
+public enum Status { idle, moving, crouching, sliding, climbingLadder, wallRunning, grabbedLedge, climbingLedge, vaulting, surfaceSwimming, underwaterSwimming }
 
 public class PlayerController : MonoBehaviour
 {
@@ -15,6 +15,8 @@ public class PlayerController : MonoBehaviour
     private LayerMask ladderLayer;
     [SerializeField]
     private LayerMask wallrunLayer;
+    [SerializeField]
+    private LayerMask topWaterLayer;
 
     GameObject vaultHelper;
 
@@ -25,6 +27,7 @@ public class PlayerController : MonoBehaviour
     Vector3 vaultOver;
     Vector3 vaultDir;
 
+    CameraMovement camera;
     PlayerMovement movement;
     PlayerInput playerInput;
     AnimateLean animateLean;
@@ -32,6 +35,8 @@ public class PlayerController : MonoBehaviour
     bool canInteract;
     bool canGrabLedge;
     bool controlledSlide;
+    bool isInWater;
+    bool canJumpOutOfWater;
 
     float rayDistance;
     float slideLimit;
@@ -40,6 +45,7 @@ public class PlayerController : MonoBehaviour
     float height;
     float halfradius;
     float halfheight;
+    float treadTime;
 
     int wallDir = 1;
 
@@ -48,6 +54,7 @@ public class PlayerController : MonoBehaviour
         CreateVaultHelper();
         playerInput = GetComponent<PlayerInput>();
         movement = GetComponent<PlayerMovement>();
+        camera = GetComponentInChildren<CameraMovement>();
 
         if (GetComponentInChildren<AnimateLean>())
             animateLean = GetComponentInChildren<AnimateLean>();
@@ -67,15 +74,17 @@ public class PlayerController : MonoBehaviour
         UpdateInteraction();
         UpdateMovingStatus();
 
-
-        //Check for movement updates
-        CheckSliding();
-        CheckCrouching();
-        CheckForWallrun();
-        CheckLadderClimbing();
-        UpdateLedgeGrabbing();
-        CheckForVault();
-        //Add new check to change status right here
+        if((int)status < 9) //If we are not swimming
+        {
+            //Check for movement updates
+            CheckSliding();
+            CheckCrouching();
+            CheckForWallrun();
+            CheckLadderClimbing();
+            UpdateLedgeGrabbing();
+            CheckForVault();
+            //Add new check to change status right here
+        }
 
         //Misc
         UpdateLean();
@@ -122,6 +131,12 @@ public class PlayerController : MonoBehaviour
     {
         switch (status)
         {
+            case Status.surfaceSwimming:
+                SurfaceSwimmingMovement();
+                break;
+            case Status.underwaterSwimming:
+                UnderwaterSwimmingMovement();
+                break;
             case Status.sliding:
                 SlideMovement();
                 break;
@@ -489,6 +504,104 @@ public class PlayerController : MonoBehaviour
         vaultHelper.transform.position = vaultOver;
         vaultHelper.transform.rotation = Quaternion.LookRotation(vaultDir);
     }
+    /*********************************************************************/
+
+    /***************************** SWIMMING ******************************/
+    void SurfaceSwimmingMovement()
+    {
+        float wantedYPos = getWaterLevel();
+        float dif = transform.position.y - wantedYPos;
+        float swimAdjust = Mathf.Sin(dif);
+        Vector3 move = new Vector3(playerInput.input.x, 0, playerInput.input.y);
+        move = transform.TransformDirection(move) * 2f;
+
+        bool isTreading = (move.sqrMagnitude < 0.02f);
+        treadTime = Mathf.PingPong(treadTime + Time.deltaTime, isTreading ? 0.5f : 0.25f);
+
+        if (dif < halfheight / 4f)
+            canJumpOutOfWater = true;
+
+        if (playerInput.elevate >= 0.02f && canJumpOutOfWater)
+        {
+            if (dif >= halfheight / 4)
+            {
+                movement.Jump(Vector3.up, 0.5f);
+                status = Status.moving;
+            }
+            else
+                move.y = 1f;
+        }
+        else if (isInWater)
+        {
+            if (playerInput.elevate <= -0.02f)
+                move.y = -1;
+            else
+            {
+                float downWithOffset = camera.transform.forward.y + 0.333f;
+                float swimDown = Mathf.Clamp(downWithOffset * playerInput.input.y, -Mathf.Infinity, 0f);
+                move.y = (swimDown <= -0.02f) ? swimDown : treadTime;
+            }
+
+                     
+            if (dif < -halfheight / 4f)
+                status = Status.underwaterSwimming;
+        }
+
+        movement.Move(move, 1f, Mathf.Clamp(swimAdjust * 0.5f, 0f, Mathf.Infinity));
+    }
+
+    void UnderwaterSwimmingMovement()
+    {
+        Vector3 swim = camera.transform.TransformDirection(new Vector3(playerInput.input.x, 0, playerInput.input.y)) * 2f;
+        swim += Vector3.up * playerInput.elevate;
+        swim = Vector3.ClampMagnitude(swim, 2f);
+        movement.NoClipMove(swim, 1f);
+    }
+
+    //Call when you enter the top of the water trigger
+    public void WithinWaterTop()
+    {
+        float wantedYPos = getWaterLevel();
+        float dif = transform.position.y - wantedYPos;
+        if ((int)status < 9) //If we are not swimming
+        {
+            if (dif <= -0.1f)
+                StartSwim();
+        }
+        else
+        {
+            //If we are already in the water swimming, then only go back to surface swimming when heading upwards
+            if (dif >= -0.1f)
+            {
+                if (movement.grounded)
+                    status = Status.moving;
+                else if (status == Status.underwaterSwimming)
+                    StartSwim();
+            }
+        }
+    }
+
+    float getWaterLevel()
+    {
+        float waterLevel = transform.position.y; //This is just a default y value
+        Vector3 pos = transform.position; pos.y += 100f; //Add 100 to make it above the player and the water (NOTE: just don't have 100 units deep water, if you do, increase this)
+        if (Physics.Raycast(pos, Vector3.down, out var hit, Mathf.Infinity, topWaterLayer))
+            waterLevel = hit.point.y - (halfheight / 2f);
+        return waterLevel;
+    }
+
+    void StartSwim()
+    {
+        status = Status.surfaceSwimming;
+        canJumpOutOfWater = false;
+        treadTime = 0;
+    }
+
+    public void CurrentlyInWater(bool inWater)
+    {
+        isInWater = inWater;
+    }
+
     /*********************************************************************/
 
     bool hasObjectInfront(float dis, LayerMask layer)
