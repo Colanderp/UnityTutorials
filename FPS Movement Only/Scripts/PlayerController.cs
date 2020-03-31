@@ -525,8 +525,8 @@ public class PlayerController : MonoBehaviour
         {
             if (dif >= halfheight / 4)
             {
-                movement.Jump(Vector3.up, 0.5f);
-                status = Status.moving;
+                movement.Jump(Vector3.up, 1f);
+                EndSwim();
             }
             else
                 move.y = 1f;
@@ -574,7 +574,7 @@ public class PlayerController : MonoBehaviour
             if (dif >= -0.1f)
             {
                 if (movement.grounded)
-                    status = Status.moving;
+                    EndSwim();
                 else if (status == Status.underwaterSwimming)
                     StartSwim();
             }
@@ -595,13 +595,19 @@ public class PlayerController : MonoBehaviour
         StartCoroutine(startSwimming());
         IEnumerator startSwimming()
         {
-            Uncrouch();
             slideTime = 0;
+            movement.controller.height = halfheight;
             yield return new WaitForEndOfFrame();
             status = Status.surfaceSwimming;
             canJumpOutOfWater = false;
             treadTime = 0;
         }
+    }
+
+    void EndSwim()
+    {
+        movement.controller.height = height;
+        status = Status.moving;
     }
 
     public void CurrentlyInWater(bool inWater)
