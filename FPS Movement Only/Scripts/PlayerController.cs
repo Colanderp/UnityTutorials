@@ -565,7 +565,7 @@ public class PlayerController : MonoBehaviour
         float dif = transform.position.y - wantedYPos;
         if ((int)status < 9) //If we are not swimming
         {
-            if (dif <= -0.1f)
+            if (dif <= 0f && movement.controller.velocity.y <= 0)
                 StartSwim();
         }
         else
@@ -592,9 +592,16 @@ public class PlayerController : MonoBehaviour
 
     void StartSwim()
     {
-        status = Status.surfaceSwimming;
-        canJumpOutOfWater = false;
-        treadTime = 0;
+        StartCoroutine(startSwimming());
+        IEnumerator startSwimming()
+        {
+            Uncrouch();
+            slideTime = 0;
+            yield return new WaitForEndOfFrame();
+            status = Status.surfaceSwimming;
+            canJumpOutOfWater = false;
+            treadTime = 0;
+        }
     }
 
     public void CurrentlyInWater(bool inWater)
