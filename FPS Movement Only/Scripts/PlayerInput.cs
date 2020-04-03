@@ -33,6 +33,14 @@ public class PlayerInput : MonoBehaviour
         }
     }
 
+    public float elevate
+    {
+        get
+        {
+            return Input.GetAxis("Elevate");
+        }
+    }
+
     public bool run
     {
         get { return Input.GetKey(KeyCode.LeftShift); }

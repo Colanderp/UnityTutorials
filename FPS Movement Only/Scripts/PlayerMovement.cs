@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PlayerMovement : MonoBehaviour
+public class PlayerMovement : InterpolatedTransform
 {
     public float walkSpeed = 4.0f;
     public float runSpeed = 8.0f;
@@ -31,26 +31,49 @@ public class PlayerMovement : MonoBehaviour
     private bool forceGravity;
     private float forceTime = 0;
 
+    public override void OnEnable()
+    {
+        base.OnEnable();
+    }
+
     private void Start()
     {
         // Saving component references to improve performance.
         controller = GetComponent<CharacterController>();
     }
-    
-    private void Update()
+    public override void ForgetPreviousTransforms()
     {
+        base.ForgetPreviousTransforms();
+    }
+
+    public override void Update()
+    {
+        Vector3 newestTransform = m_lastPositions[m_newTransformIndex];
+        Vector3 olderTransform = m_lastPositions[OldTransformIndex()];
+
+        Vector3 adjust = Vector3.Lerp(olderTransform, newestTransform, InterpolationController.InterpolationFactor);
+        adjust -= transform.position;
+
+        controller.Move(adjust);
+
         if (forceTime > 0)
             forceTime -= Time.deltaTime;
     }
 
-    private void FixedUpdate()
+    public override void FixedUpdate()
     {
-        if(forceTime > 0)
+        base.FixedUpdate();
+        if (forceTime > 0)
         {
             if(forceGravity)
                 moveDirection.y -= gravity * Time.deltaTime;
             grounded = (controller.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
         }
+    }
+
+    public override void LateFixedUpdate()
+    {
+        base.LateFixedUpdate();
     }
 
     public void Move(Vector2 input, bool sprint, bool crouching)
@@ -71,7 +94,7 @@ public class PlayerMovement : MonoBehaviour
         // Apply gravity
         moveDirection.y -= gravity * Time.deltaTime;
         // Move the controller, and set grounded true or false depending on whether we're standing on something
-        grounded = (controller.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+        grounded = (controller.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0; 
     }
 
     public void Move(Vector3 direction, float speed, float appliedGravity)
@@ -92,6 +115,16 @@ public class PlayerMovement : MonoBehaviour
         UpdateJump();
 
         grounded = (controller.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+    }
+    public void NoClipMove(Vector3 direction, float speed)
+    {
+        if (forceTime > 0)
+            return;
+
+        Vector3 move = direction * speed;
+        moveDirection = move;
+        controller.Move(moveDirection * Time.deltaTime);
+        grounded = false;
     }
 
     public void Jump(Vector3 dir, float mult)
