@@ -1,9 +1,10 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 public enum Status { idle, moving, crouching, sliding, climbingLadder, wallRunning, grabbedLedge, climbingLedge, vaulting, surfaceSwimming, underwaterSwimming }
-
+public class StatusEvent : UnityEvent<Status> { }
 public class PlayerController : MonoBehaviour
 {
     public Status status;
@@ -17,6 +18,8 @@ public class PlayerController : MonoBehaviour
     private LayerMask wallrunLayer;
     [SerializeField]
     private LayerMask topWaterLayer;
+    [SerializeField]
+    private float crouchHeight = 1f;
 
     GameObject vaultHelper;
 
@@ -31,6 +34,7 @@ public class PlayerController : MonoBehaviour
     PlayerMovement movement;
     PlayerInput playerInput;
     AnimateLean animateLean;
+    AnimateCameraLevel animateCamLevel;
 
     bool canInteract;
     bool canGrabLedge;
@@ -45,9 +49,27 @@ public class PlayerController : MonoBehaviour
     float height;
     float halfradius;
     float halfheight;
+    float crouchCamAdjust;
     float treadTime;
 
     int wallDir = 1;
+    public StatusEvent onStatusChange;
+
+    void ChangeStatus(Status s)
+    {
+        if (status == s) return;
+        status = s;
+        if (onStatusChange != null)
+            onStatusChange.Invoke(status);
+    }
+
+    public void AddToStatusChange(UnityAction<Status> action)
+    {
+        if(onStatusChange == null)
+            onStatusChange = new StatusEvent();
+
+        onStatusChange.AddListener(action);
+    }
 
     private void Start()
     {
@@ -58,6 +80,8 @@ public class PlayerController : MonoBehaviour
 
         if (GetComponentInChildren<AnimateLean>())
             animateLean = GetComponentInChildren<AnimateLean>();
+        if (GetComponentInChildren<AnimateCameraLevel>())
+            animateCamLevel = GetComponentInChildren<AnimateCameraLevel>();
 
         slideLimit = movement.controller.slopeLimit - .1f;
         radius = movement.controller.radius;
@@ -65,6 +89,7 @@ public class PlayerController : MonoBehaviour
         halfradius = radius / 2f;
         halfheight = height / 2f;
         rayDistance = halfheight + radius + .1f;
+        crouchCamAdjust = (crouchHeight - height) / 2f;
     }
 
     /******************************* UPDATE ******************************/
@@ -88,6 +113,7 @@ public class PlayerController : MonoBehaviour
 
         //Misc
         UpdateLean();
+        UpdateCamLevel();
     }
 
     void UpdateInteraction()
@@ -105,9 +131,10 @@ public class PlayerController : MonoBehaviour
     {
         if ((int)status <= 1)
         {
-            status = Status.idle;
             if (playerInput.input.magnitude > 0.02f)
-                status = Status.moving;
+                ChangeStatus(Status.moving);
+            else
+                ChangeStatus(Status.idle);
         }
     }
 
@@ -122,6 +149,16 @@ public class PlayerController : MonoBehaviour
         else if (status == Status.grabbedLedge || status == Status.vaulting)
             lean.y = 1;
         animateLean.SetLean(lean);
+    }
+
+    void UpdateCamLevel()
+    {
+        if (animateCamLevel == null) return;
+
+        float level = 0f;
+        if(status == Status.crouching || status == Status.sliding)
+            level = crouchCamAdjust;
+        animateCamLevel.UpdateLevel(level);
     }
     /*********************************************************************/
 
@@ -206,7 +243,7 @@ public class PlayerController : MonoBehaviour
         if(playerInput.crouch && canSlide())
         {
             slideDir = transform.forward;
-            movement.controller.height = halfheight;
+            movement.controller.height = crouchHeight;
             controlledSlide = true;
             slideTime = 1f;
         }
@@ -214,7 +251,7 @@ public class PlayerController : MonoBehaviour
         //Lower slidetime
         if (slideTime > 0)
         {
-            status = Status.sliding;
+            ChangeStatus(Status.sliding);
             slideTime -= Time.deltaTime;
         }
 
@@ -227,7 +264,7 @@ public class PlayerController : MonoBehaviour
                 slideDir = new Vector3(hitNormal.x, -hitNormal.y, hitNormal.z);
                 Vector3.OrthoNormalize(ref hitNormal, ref slideDir);
                 controlledSlide = false;
-                status = Status.sliding;
+                ChangeStatus(Status.sliding);
             }
         }
     }
@@ -246,7 +283,7 @@ public class PlayerController : MonoBehaviour
     {
         if (!movement.grounded || (int)status > 2) return;
 
-        if(playerInput.crouch)
+        if (playerInput.crouch)
         {
             if (status != Status.crouching)
                 Crouch();
@@ -257,14 +294,17 @@ public class PlayerController : MonoBehaviour
 
     void Crouch()
     {
-        movement.controller.height = halfheight;
-        status = Status.crouching;
+        movement.controller.height = crouchHeight;
+        ChangeStatus(Status.crouching);
     }
 
     void Uncrouch()
     {
+        Vector3 bottom = transform.position - (Vector3.up * ((crouchHeight / 2) - radius));
+        bool isBlocked = Physics.SphereCast(bottom, radius, Vector3.up, out var hit, height - radius);
+        if (isBlocked) return; //If we have something above us, do nothing and return
         movement.controller.height = height;
-        status = Status.moving;
+        ChangeStatus(Status.moving);
     }
     /*********************************************************************/
 
@@ -283,12 +323,12 @@ public class PlayerController : MonoBehaviour
         {
             movement.Jump((-ladderNormal + Vector3.up * 2f).normalized, 1f);
             playerInput.ResetJump();
-            status = Status.moving;
+            ChangeStatus(Status.moving);
         }
 
         if (!hasObjectInfront(0.05f, ladderLayer) || goToGround)
         {
-            status = Status.moving;
+            ChangeStatus(Status.moving);
             Vector3 pushUp = ladderNormal;
             pushUp.y = 0.25f;
 
@@ -314,7 +354,7 @@ public class PlayerController : MonoBehaviour
             if (hasObjectInfront(0.05f, ladderLayer) && playerInput.input.y > 0.02f)
             {
                 canInteract = false;
-                status = Status.climbingLadder;
+                ChangeStatus(Status.climbingLadder);
             }
         }
     }
@@ -332,11 +372,11 @@ public class PlayerController : MonoBehaviour
         {
             movement.Jump(((Vector3.up * (s + 0.5f)) + (wallNormal * 2f * s) + (transform.right * -wallDir * 1.25f)).normalized, s + 0.5f);
             playerInput.ResetJump();
-            status = Status.moving;
+            ChangeStatus(Status.moving);
         }
 
         if (!hasWallToSide(wallDir) || movement.grounded)
-            status = Status.moving;
+            ChangeStatus(Status.moving);
 
         movement.Move(move, movement.runSpeed, (1f - s) + (s / 4f));
     }
@@ -358,7 +398,7 @@ public class PlayerController : MonoBehaviour
         {
             wallDir = wall;
             wallNormal = Vector3.Cross(hit.normal, Vector3.up) * -wallDir;
-            status = Status.wallRunning;
+            ChangeStatus(Status.wallRunning);
         }
     }
 
@@ -380,7 +420,7 @@ public class PlayerController : MonoBehaviour
         {
             movement.Jump((Vector3.up - transform.forward).normalized, 1f);
             playerInput.ResetJump();
-            status = Status.moving;
+            ChangeStatus(Status.moving);
         }
 
         movement.Move(Vector3.zero, 0f, 0f); //Stay in place
@@ -394,7 +434,7 @@ public class PlayerController : MonoBehaviour
 
         movement.Move(move, movement.walkSpeed, 0f);
         if (new Vector2(dir.x, dir.z).magnitude < 0.125f)
-            status = Status.idle;
+            ChangeStatus(Status.idle);
     }
 
     void CheckLedgeGrab()
@@ -418,7 +458,7 @@ public class PlayerController : MonoBehaviour
             if (!Physics.SphereCast(checkCollisions, radius, Vector3.up, out hit, height - radius))
             {
                 canInteract = false;
-                status = Status.grabbedLedge;
+                ChangeStatus(Status.grabbedLedge);
             }
         }
     }
@@ -441,9 +481,9 @@ public class PlayerController : MonoBehaviour
                 canGrabLedge = false;
                 Vector2 down = playerInput.down;
                 if (down.y == -1)
-                    status = Status.moving;
+                    ChangeStatus(Status.moving);
                 else if (down.y == 1)
-                    status = Status.climbingLedge;
+                    ChangeStatus(Status.climbingLedge);
             }
         }
     }
@@ -459,7 +499,7 @@ public class PlayerController : MonoBehaviour
         if(localPos.z > halfheight)
         {
             movement.controller.height = height;
-            status = Status.moving;
+            ChangeStatus(Status.moving);
         }
 
         movement.Move(move, movement.runSpeed, 0f);
@@ -486,7 +526,7 @@ public class PlayerController : MonoBehaviour
                     SetVaultHelper();
 
                     canInteract = false;
-                    status = Status.vaulting;
+                    ChangeStatus(Status.vaulting);
                     movement.controller.height = radius;
                 }
             }
@@ -544,7 +584,7 @@ public class PlayerController : MonoBehaviour
 
                      
             if (dif < -halfheight / 4f)
-                status = Status.underwaterSwimming;
+                ChangeStatus(Status.underwaterSwimming);
         }
 
         movement.Move(move, 1f, Mathf.Clamp(swimAdjust * 0.5f, 0f, Mathf.Infinity));
@@ -555,7 +595,7 @@ public class PlayerController : MonoBehaviour
         Vector3 swim = camera.transform.TransformDirection(new Vector3(playerInput.input.x, 0, playerInput.input.y)) * 2f;
         swim += Vector3.up * playerInput.elevate;
         swim = Vector3.ClampMagnitude(swim, 2f);
-        movement.NoClipMove(swim, 1f);
+        movement.DirectMove(swim, 1f);
     }
 
     //Call when you enter the top of the water trigger
@@ -598,7 +638,7 @@ public class PlayerController : MonoBehaviour
             slideTime = 0;
             movement.controller.height = halfheight;
             yield return new WaitForEndOfFrame();
-            status = Status.surfaceSwimming;
+            ChangeStatus(Status.surfaceSwimming);
             canJumpOutOfWater = false;
             treadTime = 0;
         }
@@ -607,7 +647,7 @@ public class PlayerController : MonoBehaviour
     void EndSwim()
     {
         movement.controller.height = height;
-        status = Status.moving;
+        ChangeStatus(Status.moving);
     }
 
     public void CurrentlyInWater(bool inWater)
