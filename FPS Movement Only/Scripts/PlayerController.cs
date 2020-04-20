@@ -51,6 +51,8 @@ public class PlayerController : MonoBehaviour
     float halfheight;
     float crouchCamAdjust;
     float treadTime;
+    float slideBlendTime = 0.222f;
+    float slideDownward = 0f;
 
     int wallDir = 1;
     public StatusEvent onStatusChange;
@@ -88,7 +90,7 @@ public class PlayerController : MonoBehaviour
         height = movement.controller.height;
         halfradius = radius / 2f;
         halfheight = height / 2f;
-        rayDistance = halfheight + radius + .1f;
+        rayDistance = halfheight + radius + .175f;
         crouchCamAdjust = (crouchHeight - height) / 2f;
     }
 
@@ -156,7 +158,7 @@ public class PlayerController : MonoBehaviour
         if (animateCamLevel == null) return;
 
         float level = 0f;
-        if(status == Status.crouching || status == Status.sliding)
+        if (status == Status.crouching || status == Status.sliding || status == Status.vaulting || status == Status.climbingLedge)
             level = crouchCamAdjust;
         animateCamLevel.UpdateLevel(level);
     }
@@ -236,7 +238,9 @@ public class PlayerController : MonoBehaviour
             slideTime = 0;
         }
 
-        movement.Move(slideDir, movement.slideSpeed, 1f);
+        float blend = Mathf.Clamp(slideTime, 0f, slideBlendTime) / slideBlendTime;
+        float slideSpeed = Mathf.Lerp(movement.slideSpeed.min, movement.slideSpeed.max, slideDownward);
+        movement.Move(slideDir, slideSpeed * blend, 1f);
         if (slideTime <= 0)
         {
             if (playerInput.crouching)
@@ -249,32 +253,49 @@ public class PlayerController : MonoBehaviour
     void CheckSliding()
     {
         //Check to slide when running
-        if(playerInput.crouch && canSlide())
+        if (playerInput.crouch && canSlide())
         {
+            ChangeStatus(Status.sliding);
             slideDir = transform.forward;
             movement.controller.height = crouchHeight;
             controlledSlide = true;
+            slideDownward = 0f;
             slideTime = 1f;
         }
 
         //Lower slidetime
         if (slideTime > 0)
         {
-            ChangeStatus(Status.sliding);
-            slideTime -= Time.deltaTime;
+            if (slideDir.y < 0)
+            {
+                slideDownward = Mathf.Clamp(slideDownward + Time.deltaTime, 0f, 1f);
+                if (slideTime <= slideBlendTime)
+                    slideTime += Time.deltaTime;
+            }
+            else
+            {
+                slideDownward = Mathf.Clamp(slideDownward - Time.deltaTime, 0f, 1f);
+                slideTime -= Time.deltaTime;
+            }
         }
 
         if (Physics.Raycast(transform.position, -Vector3.up, out var hit, rayDistance))
         {
             float angle = Vector3.Angle(hit.normal, Vector3.up);
-            if (angle > slideLimit && movement.moveDirection.y < 0)
+            if (angle > 0 && movement.moveDirection.y < 0)
             {
                 Vector3 hitNormal = hit.normal;
                 slideDir = new Vector3(hitNormal.x, -hitNormal.y, hitNormal.z);
                 Vector3.OrthoNormalize(ref hitNormal, ref slideDir);
-                controlledSlide = false;
-                ChangeStatus(Status.sliding);
+                if (angle > slideLimit && status != Status.sliding)
+                {
+                    controlledSlide = false;
+                    slideTime = slideBlendTime;
+                    ChangeStatus(Status.sliding);
+                }
             }
+            else
+                slideDir.y = 0;
         }
     }
 
