@@ -241,21 +241,14 @@ public class PlayerController : MonoBehaviour
         float blend = Mathf.Clamp(slideTime, 0f, slideBlendTime) / slideBlendTime;
         float slideSpeed = Mathf.Lerp(movement.slideSpeed.min, movement.slideSpeed.max, slideDownward);
         movement.Move(slideDir, slideSpeed * blend, 1f);
-        if (slideTime <= 0)
-        {
-            if (playerInput.crouching)
-                Crouch();
-            else
-                Uncrouch();
-        }
     }
 
     void CheckSliding()
     {
         //Check to slide when running
-        if (playerInput.crouch && canSlide())
+        if(playerInput.crouch && canSlide())
         {
-            ChangeStatus(Status.sliding);
+            ChangeStatus(Status.sliding, SlideIK);
             slideDir = transform.forward;
             movement.controller.height = crouchHeight;
             controlledSlide = true;
@@ -268,7 +261,7 @@ public class PlayerController : MonoBehaviour
         {
             if (slideDir.y < 0)
             {
-                slideDownward = Mathf.Clamp(slideDownward + Time.deltaTime, 0f, 1f);
+                slideDownward = Mathf.Clamp(slideDownward + Time.deltaTime * Mathf.Sqrt(Mathf.Abs(slideDir.y)), 0f, 1f);
                 if (slideTime <= slideBlendTime)
                     slideTime += Time.deltaTime;
             }
@@ -277,6 +270,13 @@ public class PlayerController : MonoBehaviour
                 slideDownward = Mathf.Clamp(slideDownward - Time.deltaTime, 0f, 1f);
                 slideTime -= Time.deltaTime;
             }
+        }
+        else if(status == Status.sliding)
+        {
+            if (playerInput.crouching)
+                Crouch();
+            else if (!Uncrouch())
+                Crouch();
         }
 
         if (Physics.Raycast(transform.position, -Vector3.up, out var hit, rayDistance))
@@ -291,7 +291,7 @@ public class PlayerController : MonoBehaviour
                 {
                     controlledSlide = false;
                     slideTime = slideBlendTime;
-                    ChangeStatus(Status.sliding);
+                    ChangeStatus(Status.sliding, SlideIK);
                 }
             }
             else
