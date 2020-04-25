@@ -6,17 +6,16 @@ using System.Collections;
  * http://www.kinematicsoup.com/news/2016/8/9/rrypp5tkubynjwxhxjzd42s3o034o8
  * /
 
-[RequireComponent(typeof(InterpolatedTransformUpdater))]
 /*
  * Interpolates an object to the transform at the latest FixedUpdate from the transform at the previous FixedUpdate.
  * It is critical this script's execution order is set before all other scripts that modify a transform from FixedUpdate.
  */
+[RequireComponent(typeof(InterpolatedTransformUpdater))]
 public class InterpolatedTransform : MonoBehaviour
 {
     public Vector3[] m_lastPositions; // Stores the transform of the object from the last two FixedUpdates
     [HideInInspector]
     public int m_newTransformIndex; // Keeps track of which index is storing the newest value.
-
     /*
      * Initializes the list of previous orientations
      */
@@ -32,17 +31,22 @@ public class InterpolatedTransform : MonoBehaviour
     public virtual void ForgetPreviousTransforms()
     {
         m_lastPositions = new Vector3[2];
+        m_lastPositions[0] = transform.position;
+        m_lastPositions[1] = transform.position;
         m_newTransformIndex = 0;
     }
 
     public virtual void ResetPositionTo(Vector3 resetTo)
     {
-        //Remove old interpolation
-        ForgetPreviousTransforms();
-        //Reset position to 'resetTo'
-        transform.position = resetTo;
-        m_lastPositions[m_newTransformIndex] = transform.position;
-        m_lastPositions[OldTransformIndex()] = transform.position;
+        StartCoroutine(forcePosition());
+        IEnumerator forcePosition()
+        {
+            //Reset position to 'resetTo'
+            transform.position = resetTo;
+            //Remove old interpolation
+            ForgetPreviousTransforms();
+            yield return new WaitForEndOfFrame();
+        }
     }
 
     /*
@@ -52,9 +56,10 @@ public class InterpolatedTransform : MonoBehaviour
     public virtual void FixedUpdate()
     {
         Vector3 mostRecentTransform = m_lastPositions[m_newTransformIndex];
+      
         transform.position = mostRecentTransform;
     }
-    
+
     /*
      * Runs after ofther scripts to save the objects's final transform.
      */
@@ -71,7 +76,7 @@ public class InterpolatedTransform : MonoBehaviour
     {
         Vector3 newestTransform = m_lastPositions[m_newTransformIndex];
         Vector3 olderTransform = m_lastPositions[OldTransformIndex()];
-
+        
         transform.position = Vector3.Lerp(olderTransform, newestTransform, InterpolationController.InterpolationFactor);
     }
 

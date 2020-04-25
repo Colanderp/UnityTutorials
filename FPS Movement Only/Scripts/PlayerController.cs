@@ -1,10 +1,13 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-public enum Status { idle, walking, crouching, sprinting, sliding, climbingLadder, wallRunning, grabbedLedge, climbingLedge, vaulting, surfaceSwimming, underwaterSwimming }
-public class StatusEvent : UnityEvent<Status> { }
+public enum Status { idle, walking, crouching, sprinting, sliding, climbingLadder, wallRunning, vaulting, grabbedLedge, climbingLedge, surfaceSwimming, underwaterSwimming }
+public class StatusEvent : UnityEvent<Status, Func<IKData>> { }
+[RequireComponent(typeof(PlayerInput))]
+[RequireComponent(typeof(PlayerMovement))]
 public class PlayerController : MonoBehaviour
 {
     public Status status;
@@ -20,6 +23,14 @@ public class PlayerController : MonoBehaviour
     private LayerMask topWaterLayer;
     [SerializeField]
     private float crouchHeight = 1f;
+    [SerializeField]
+    private float sprintTime = 6f;
+    [SerializeField]
+    private float sprintReserve = 4f;
+    [SerializeField]
+    private float sprintMinimum = 2f;
+    [SerializeField]
+    private float wallrunMinimum = 0.2f;
 
     GameObject vaultHelper;
 
@@ -41,6 +52,7 @@ public class PlayerController : MonoBehaviour
     bool controlledSlide;
     bool isInWater;
     bool canJumpOutOfWater;
+    bool forceSprintReserve = false;
 
     float rayDistance;
     float slideLimit;
@@ -51,8 +63,10 @@ public class PlayerController : MonoBehaviour
     float halfheight;
     float crouchCamAdjust;
     float treadTime;
+    float stamina;
     float slideBlendTime = 0.222f;
     float slideDownward = 0f;
+    float wallrunTime;
 
     int wallDir = 1;
     public StatusEvent onStatusChange;
@@ -62,10 +76,17 @@ public class PlayerController : MonoBehaviour
         if (status == s) return;
         status = s;
         if (onStatusChange != null)
-            onStatusChange.Invoke(status);
+            onStatusChange.Invoke(status, null);
+    }
+    void ChangeStatus(Status s, Func<IKData> call)
+    {
+        if (status == s) return;
+        status = s;
+        if (onStatusChange != null)
+            onStatusChange.Invoke(status, call);
     }
 
-    public void AddToStatusChange(UnityAction<Status> action)
+    public void AddToStatusChange(UnityAction<Status, Func<IKData>> action)
     {
         if(onStatusChange == null)
             onStatusChange = new StatusEvent();
@@ -78,6 +99,7 @@ public class PlayerController : MonoBehaviour
         CreateVaultHelper();
         playerInput = GetComponent<PlayerInput>();
         movement = GetComponent<PlayerMovement>();
+        movement.AddToReset(() => { status = Status.walking; });
         camera = GetComponentInChildren<CameraMovement>();
 
         if (GetComponentInChildren<AnimateLean>())
@@ -92,6 +114,7 @@ public class PlayerController : MonoBehaviour
         halfheight = height / 2f;
         rayDistance = halfheight + radius + .175f;
         crouchCamAdjust = (crouchHeight - height) / 2f;
+        stamina = sprintTime;
     }
 
     /******************************* UPDATE ******************************/
@@ -120,24 +143,53 @@ public class PlayerController : MonoBehaviour
 
     void UpdateInteraction()
     {
-        if (!canInteract)
+        if ((int)status >= 5)
+            canInteract = false;
+        else if (!canInteract)
         {
             if (movement.grounded || movement.moveDirection.y < 0)
                 canInteract = true;
         }
-        else if ((int)status >= 6)
-            canInteract = false;
     }
 
     void UpdateMovingStatus()
     {
+        if (status == Status.sprinting && stamina > 0)
+            stamina -= Time.deltaTime;
+        else if (stamina < sprintTime)
+            stamina += Time.deltaTime;
+
         if ((int)status <= 1 || isSprinting())
         {
             if (playerInput.input.magnitude > 0.02f)
-                ChangeStatus((playerInput.run) ? Status.sprinting : Status.walking);
+                ChangeStatus((shouldSprint()) ? Status.sprinting : Status.walking);
             else
                 ChangeStatus(Status.idle);
         }
+    }
+
+    bool shouldSprint()
+    {
+        bool sprint = false;
+        sprint = (playerInput.run && playerInput.input.y > 0);
+        if (status != Status.sliding)
+        {
+            if (!isSprinting()) //If we want to sprint
+            {
+                if (forceSprintReserve && stamina < sprintReserve)
+                    return false;
+                else if (!forceSprintReserve && stamina < sprintMinimum)
+                    return false;
+            }
+            if (stamina <= 0)
+            {
+                forceSprintReserve = true;
+                return false;
+            }
+        }
+        if (sprint)
+            forceSprintReserve = false;
+        return sprint;
     }
 
     void UpdateLean()
@@ -146,7 +198,7 @@ public class PlayerController : MonoBehaviour
         Vector2 lean = Vector2.zero;
         if (status == Status.wallRunning)
             lean.x = wallDir;
-        if (status == Status.sliding && controlledSlide)
+        if (status == Status.sliding)
             lean.y = -1;
         else if (status == Status.grabbedLedge || status == Status.vaulting)
             lean.y = 1;
@@ -158,7 +210,7 @@ public class PlayerController : MonoBehaviour
         if (animateCamLevel == null) return;
 
         float level = 0f;
-        if (status == Status.crouching || status == Status.sliding || status == Status.vaulting || status == Status.climbingLedge)
+        if(status == Status.crouching || status == Status.sliding || status == Status.vaulting || status == Status.climbingLedge)
             level = crouchCamAdjust;
         animateCamLevel.UpdateLevel(level);
     }
@@ -216,11 +268,19 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    bool isSprinting()
+    public bool isSprinting()
     {
-        return (status == Status.sprinting);
+        return (status == Status.sprinting && movement.grounded);
     }
-    bool isCrouching()
+
+    public bool isWalking()
+    {
+        if (status == Status.walking || status == Status.crouching)
+            return (movement.controller.velocity.magnitude > 0f && movement.grounded);
+        else
+            return false;
+    }
+    public bool isCrouching()
     {
         return (status == Status.crouching);
     }
@@ -270,13 +330,19 @@ public class PlayerController : MonoBehaviour
                 slideDownward = Mathf.Clamp(slideDownward - Time.deltaTime, 0f, 1f);
                 slideTime -= Time.deltaTime;
             }
+
+            if (controlledSlide && slideTime <= slideBlendTime)
+            {
+                if (shouldSprint() && Uncrouch())
+                    ChangeStatus(Status.sprinting);
+            }
         }
         else if(status == Status.sliding)
         {
             if (playerInput.crouching)
                 Crouch();
-            else if (!Uncrouch())
-                Crouch();
+            else if (!Uncrouch()) //Try to uncrouch, if this is false then we cannot uncrouch
+                Crouch(); //So just keep crouched
         }
 
         if (Physics.Raycast(transform.position, -Vector3.up, out var hit, rayDistance))
@@ -285,10 +351,11 @@ public class PlayerController : MonoBehaviour
             if (angle > 0 && movement.moveDirection.y < 0)
             {
                 Vector3 hitNormal = hit.normal;
-                slideDir = new Vector3(hitNormal.x, -hitNormal.y, hitNormal.z);
+                slideDir = Vector3.ClampMagnitude(new Vector3(hitNormal.x, -hitNormal.y, hitNormal.z), 1f);
                 Vector3.OrthoNormalize(ref hitNormal, ref slideDir);
                 if (angle > slideLimit && status != Status.sliding)
                 {
+                    Crouch();
                     controlledSlide = false;
                     slideTime = slideBlendTime;
                     ChangeStatus(Status.sliding, SlideIK);
@@ -301,10 +368,24 @@ public class PlayerController : MonoBehaviour
 
     bool canSlide()
     {
-        if (!movement.grounded) return false;
-        if (playerInput.input.magnitude <= 0.02f || !playerInput.run) return false;
+        if (!isSprinting()) return false;
         if (slideTime > 0 || status == Status.sliding) return false;
         return true;
+    }
+
+    Vector3 groundPos;
+    IKData SlideIK()
+    {
+        IKData data = new IKData();
+        Vector3 dir = Vector3.Cross(slideDir, Vector3.up);
+        if (Physics.Raycast(transform.position + ((slideDir + dir) * radius), -Vector3.up, out var hit, 1f))
+            groundPos = hit.point;
+        data.handPos = groundPos;
+        data.handEulerAngles = Quaternion.LookRotation(dir, Vector3.up).eulerAngles;
+
+        data.armElbowPos = transform.position - ((transform.right - Vector3.up) * radius);
+        data.armLocalPos.x = -0.35f;
+        return data;
     }
     /*********************************************************************/
 
@@ -334,13 +415,14 @@ public class PlayerController : MonoBehaviour
         ChangeStatus(Status.crouching);
     }
 
-    void Uncrouch()
+    bool Uncrouch()
     {
         Vector3 bottom = transform.position - (Vector3.up * ((crouchHeight / 2) - radius));
         bool isBlocked = Physics.SphereCast(bottom, radius, Vector3.up, out var hit, height - radius);
-        if (isBlocked) return; //If we have something above us, do nothing and return
+        if (isBlocked) return false; //If we have something above us, do nothing and return
         movement.controller.height = height;
         ChangeStatus(Status.walking);
+        return true;
     }
     /*********************************************************************/
 
@@ -388,11 +470,28 @@ public class PlayerController : MonoBehaviour
 
             ladderNormal = -hit.normal;
             if (hasObjectInfront(0.05f, ladderLayer) && playerInput.input.y > 0.02f)
-            {
-                canInteract = false;
-                ChangeStatus(Status.climbingLadder);
-            }
+                ChangeStatus(Status.climbingLadder, LadderIK);
         }
+    }
+
+    Vector3 lastTouch = Vector3.zero;
+    IKData LadderIK()
+    {
+        IKData data = new IKData();
+        Vector3 upOffset = Vector3.up * radius * 2f;
+        Vector3 handUp = Vector3.Cross(ladderNormal, Vector3.up);
+        if (Physics.SphereCast(transform.position + upOffset, radius, ladderNormal, out var hit, 0.125f, ladderLayer))
+        {
+            if (Physics.SphereCast(hit.point + handUp, 0.125f, -handUp, out var hit2, 1.125f, ladderLayer))
+               lastTouch = hit2.point - (ladderNormal * 0.125f);
+        }
+        lastTouch.y = (int)(lastTouch.y * 2f) / 2f;
+        data.handPos = lastTouch;
+
+        data.handEulerAngles = Quaternion.LookRotation(ladderNormal, handUp).eulerAngles;
+        data.armElbowPos = transform.position + handUp * radius;
+        data.armLocalPos.x = -0.35f;
+        return data;
     }
     /*********************************************************************/
 
@@ -404,9 +503,13 @@ public class PlayerController : MonoBehaviour
 
         Vector3 move = wallNormal * s;
 
-        if (playerInput.Jump())
+        if (playerInput.Jump() && wallrunTime > wallrunMinimum)
         {
-            movement.Jump(((Vector3.up * (s + 0.5f)) + (wallNormal * 2f * s) + (transform.right * -wallDir * 1.25f)).normalized, s + 0.5f);
+            wallrunTime = 0;
+            Vector3 forward = wallNormal.normalized;
+            Vector3 right = Vector3.Cross(forward, Vector3.up) * wallDir;
+            Vector3 wallJump = (Vector3.up * (s + 0.5f) + forward * s * 1.5f + right * (s + 0.5f)).normalized;
+            movement.Jump(wallJump, (s + 1f));
             playerInput.ResetJump();
             ChangeStatus(Status.walking);
         }
@@ -414,7 +517,9 @@ public class PlayerController : MonoBehaviour
         if (!hasWallToSide(wallDir) || movement.grounded)
             ChangeStatus(Status.walking);
 
-        movement.Move(move, movement.runSpeed, (1f - s) + (s / 4f));
+        float inputGravity = (1f - s) + (s / 4f); //More input, less gravity
+        movement.Move(move, movement.runSpeed, inputGravity);
+        wallrunTime += Time.deltaTime;
     }
 
     void CheckForWallrun()
@@ -433,8 +538,9 @@ public class PlayerController : MonoBehaviour
         if(Physics.Raycast(transform.position + (transform.right * wall * radius), transform.right * wall, out var hit, halfradius, wallrunLayer))
         {
             wallDir = wall;
+            wallrunTime = 0;
             wallNormal = Vector3.Cross(hit.normal, Vector3.up) * -wallDir;
-            ChangeStatus(Status.wallRunning);
+            ChangeStatus(Status.wallRunning, WallrunIK);
         }
     }
 
@@ -446,6 +552,33 @@ public class PlayerController : MonoBehaviour
         top += (transform.up * radius);
 
         return (Physics.CapsuleCastAll(top, bottom, 0.25f, transform.right * dir, 0.05f, wallrunLayer).Length >= 1);
+    }
+
+    IKData WallrunIK()
+    {
+        IKData data = new IKData();
+        bool left = (wallDir == -1);
+        if (Physics.Raycast(transform.position + (transform.right * wallDir * radius), transform.right * wallDir, out var hit, halfradius, wallrunLayer))
+            data.handPos = hit.point;
+        if (left)
+        {
+            data.armLocalPos.x = -0.35f;
+            data.armLocalPos.z = -0.55f;
+            data.handPos += (Vector3.up + wallNormal) * radius * 2f;
+            data.handEulerAngles = Quaternion.LookRotation(wallNormal, wallDir * Vector3.Cross(wallNormal, Vector3.up)).eulerAngles;
+            data.armElbowPos = data.handPos - wallNormal;
+        }
+        else
+        {
+            data.armElbowPos = data.handPos;
+            data.armLocalPos.x = 0;
+            data.armLocalPos.z = -0.325f;
+            data.handPos += (2 * Vector3.up + wallNormal) * radius;
+            data.handEulerAngles = Quaternion.LookRotation(Vector3.up, wallDir * Vector3.Cross(wallNormal, Vector3.up)).eulerAngles;
+        }
+
+        data.armLocalPos.y = 0; 
+        return data;
     }
     /*********************************************************************/
 
@@ -468,13 +601,16 @@ public class PlayerController : MonoBehaviour
         Vector3 right = Vector3.Cross(Vector3.up, dir).normalized;
         Vector3 move = Vector3.Cross(dir, right).normalized;
 
-        movement.Move(move, movement.walkSpeed, 0f);
+        playerInput.ResetJump();
+        movement.Move(move, movement.runSpeed, 0f);
         if (new Vector2(dir.x, dir.z).magnitude < 0.125f)
             ChangeStatus(Status.idle);
     }
 
     void CheckLedgeGrab()
     {
+        if (!canInteract)
+            return;
         //Check for ledge to grab onto 
         Vector3 dir = transform.TransformDirection(new Vector3(0, -0.5f, 1).normalized);
         Vector3 pos = transform.position + (Vector3.up * height / 3f) + (transform.forward * radius / 2f);
@@ -492,10 +628,7 @@ public class PlayerController : MonoBehaviour
 
             //Check if you would be able to stand on the ledge
             if (!Physics.SphereCast(checkCollisions, radius, Vector3.up, out hit, height - radius))
-            {
-                canInteract = false;
-                ChangeStatus(Status.grabbedLedge);
-            }
+                ChangeStatus(Status.grabbedLedge, GrabbedLedgeIK);
         }
     }
 
@@ -519,9 +652,40 @@ public class PlayerController : MonoBehaviour
                 if (down.y == -1)
                     ChangeStatus(Status.walking);
                 else if (down.y == 1)
-                    ChangeStatus(Status.climbingLedge);
+                    ChangeStatus(Status.climbingLedge, ClimbingLedgeIK);
             }
         }
+    }
+
+    IKData GrabbedLedgeIK()
+    {
+        IKData data = new IKData();
+        Vector3 dir = (pushFrom - transform.position); dir.y = 0;
+        dir = dir.normalized;
+
+        float handRadius = 0.125f;
+        data.handPos = transform.position;
+        data.handPos.y = pushFrom.y;
+        data.handPos += dir * (radius + handRadius);
+
+        Vector3 handDir = -Vector3.Cross(dir, Vector3.up);
+        data.armElbowPos = (data.handPos - (handDir * radius));
+        data.handEulerAngles = Quaternion.LookRotation(handDir).eulerAngles;
+        data.armLocalPos.y = 0.075f; data.armLocalPos.z = -0.5f;
+        return data;
+    }
+
+    IKData ClimbingLedgeIK()
+    {
+        IKData data = new IKData();
+        Vector3 dir = (pushFrom - transform.position).normalized;
+
+        data.handPos = pushFrom;
+        data.handEulerAngles = Quaternion.LookRotation(dir).eulerAngles;
+        data.armElbowPos = transform.position;
+        data.armElbowPos += Vector3.Cross(dir, Vector3.up) * radius;
+        data.armElbowPos.z = transform.position.z;
+        return data;
     }
     /*********************************************************************/
 
@@ -530,7 +694,6 @@ public class PlayerController : MonoBehaviour
     {
         Vector3 dir = vaultOver - transform.position;
         Vector3 localPos = vaultHelper.transform.InverseTransformPoint(transform.position);
-        Debug.Log(localPos.z);
         Vector3 move = (vaultDir + (Vector3.up * -(localPos.z - radius) * height)).normalized;
 
         if (localPos.z < -(radius * 2f))
@@ -565,9 +728,8 @@ public class PlayerController : MonoBehaviour
                     vaultDir = transform.forward;
                     SetVaultHelper();
 
-                    canInteract = false;
-                    ChangeStatus(Status.vaulting);
                     movement.controller.height = radius;
+                    ChangeStatus(Status.vaulting, VaultIK);
                 }
             }
         }
@@ -583,6 +745,17 @@ public class PlayerController : MonoBehaviour
     {
         vaultHelper.transform.position = vaultOver;
         vaultHelper.transform.rotation = Quaternion.LookRotation(vaultDir);
+    }
+
+    IKData VaultIK()
+    {
+        IKData data = new IKData();
+        data.handPos = vaultOver + (Vector3.up * radius);
+        data.handEulerAngles = Quaternion.LookRotation(vaultDir - Vector3.up).eulerAngles;
+        data.armElbowPos = vaultOver;
+        data.armElbowPos.y = transform.position.y;
+        data.armElbowPos += Vector3.Cross(vaultDir, Vector3.up) * radius;
+        return data;
     }
     /*********************************************************************/
 
@@ -635,7 +808,7 @@ public class PlayerController : MonoBehaviour
         Vector3 swim = camera.transform.TransformDirection(new Vector3(playerInput.input.x, 0, playerInput.input.y)) * 2f;
         swim += Vector3.up * playerInput.elevate;
         swim = Vector3.ClampMagnitude(swim, 2f);
-        movement.DirectMove(swim, 1f);
+        movement.Move(swim, 1f, 0f);
     }
 
     //Call when you enter the top of the water trigger
@@ -703,5 +876,30 @@ public class PlayerController : MonoBehaviour
         Vector3 bottom = top - (transform.up * halfheight);
 
         return (Physics.CapsuleCastAll(top, bottom, 0.25f, transform.forward, dis, layer).Length >= 1);
+    }
+}
+
+public class IKData
+{
+    public Vector3 handPos;
+    public Vector3 handEulerAngles;
+
+    public Vector3 armElbowPos;
+    public Vector3 armLocalPos;
+
+    public IKData()
+    {
+        handPos = Vector3.zero;
+        handEulerAngles = Vector3.zero;
+        armElbowPos = Vector3.zero;
+        //armLocalPos = ArmIKController.defaultArmPos;
+    }
+
+    public TransformData HandData()
+    {
+        TransformData data = new TransformData();
+        data.position = handPos;
+        data.eulerAngles = handEulerAngles;
+        return data;
     }
 }

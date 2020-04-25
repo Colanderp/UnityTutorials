@@ -1,7 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
+[RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : InterpolatedTransform
 {
     public float walkSpeed = 4.0f;
@@ -25,11 +27,12 @@ public class PlayerMovement : InterpolatedTransform
 
     public bool grounded = false;
     public Vector3 jump = Vector3.zero;
+    Vector3 jumpedDir;
 
-    private RaycastHit hit;
-    private Vector3 force;
     private bool forceGravity;
     private float forceTime = 0;
+    private float jumpPower;
+    UnityEvent onReset = new UnityEvent();
 
     public override void OnEnable()
     {
@@ -41,9 +44,26 @@ public class PlayerMovement : InterpolatedTransform
         // Saving component references to improve performance.
         controller = GetComponent<CharacterController>();
     }
-    public override void ForgetPreviousTransforms()
+
+    public void AddToReset(UnityAction call)
     {
-        base.ForgetPreviousTransforms();
+        onReset.AddListener(call);
+    }
+
+    public override void ResetPositionTo(Vector3 resetTo)
+    {
+        controller.enabled = false;
+        StartCoroutine(forcePosition());
+        IEnumerator forcePosition()
+        {
+            //Reset position to 'resetTo'
+            transform.position = resetTo;
+            //Remove old interpolation
+            ForgetPreviousTransforms();
+            yield return new WaitForEndOfFrame();
+        }
+        controller.enabled = true;
+        onReset.Invoke();
     }
 
     public override void Update()
@@ -90,6 +110,15 @@ public class PlayerMovement : InterpolatedTransform
             moveDirection = transform.TransformDirection(moveDirection) * speed;
             UpdateJump();
         }
+        else
+        {
+            Vector3 adjust = new Vector3(input.x, 0, input.y);
+            adjust = transform.TransformDirection(adjust);
+            jumpedDir += adjust * Time.fixedDeltaTime * jumpPower * 2f;
+            jumpedDir = Vector3.ClampMagnitude(jumpedDir, jumpPower);
+            moveDirection.x = jumpedDir.x;
+            moveDirection.z = jumpedDir.z;
+        }
         
         // Apply gravity
         moveDirection.y -= gravity * Time.deltaTime;
@@ -116,16 +145,6 @@ public class PlayerMovement : InterpolatedTransform
 
         grounded = (controller.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
     }
-    public void DirectMove(Vector3 direction, float speed)
-    {
-        if (forceTime > 0)
-            return;
-
-        Vector3 move = direction * speed;
-        moveDirection = move;
-        controller.Move(moveDirection * Time.deltaTime);
-        grounded = false;
-    }
 
     public void Jump(Vector3 dir, float mult)
     {
@@ -140,7 +159,14 @@ public class PlayerMovement : InterpolatedTransform
             if (dir.x != 0) moveDirection.x = dir.x;
             if (dir.y != 0) moveDirection.y = dir.y;
             if (dir.z != 0) moveDirection.z = dir.z;
+
+            Vector3 move = moveDirection;
+            jumpedDir = move; move.y = 0;
+            jumpPower = Mathf.Min(move.magnitude, jumpSpeed);
+            jumpPower = Mathf.Max(jumpPower, walkSpeed);
         }
+        else
+            jumpedDir = Vector3.zero;
         jump = Vector3.zero;
     }
 
