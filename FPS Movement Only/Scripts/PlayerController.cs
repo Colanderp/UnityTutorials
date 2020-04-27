@@ -305,11 +305,42 @@ public class PlayerController : MonoBehaviour
 
     void CheckSliding()
     {
+        Vector3 slideOnGround = transform.forward;
+        if (Physics.Raycast(transform.position, -Vector3.up, out var hit, rayDistance))
+        {
+            float angle = Vector3.Angle(hit.normal, Vector3.up);
+            Vector3 hitNormal = hit.normal;
+
+            Vector3 slopeDir = Vector3.ClampMagnitude(new Vector3(hitNormal.x, -hitNormal.y, hitNormal.z), 1f);
+            Vector3.OrthoNormalize(ref hitNormal, ref slopeDir);
+            Vector3.OrthoNormalize(ref hitNormal, ref slideOnGround);
+
+            Debug.DrawRay(transform.position - Vector3.up * halfheight, slideOnGround, Color.red);
+            Debug.DrawRay(transform.position - Vector3.up * halfheight, slopeDir, Color.blue);
+
+            if (angle > 0 && status == Status.sliding) //Adjust to slope direction
+            {
+                Debug.DrawRay(transform.position - Vector3.up * halfheight, slideDir, Color.green);
+                slideDir = Vector3.RotateTowards(slideDir, slopeDir, movement.slideSpeed.min * Time.deltaTime / 2f, 0.0f);
+            }
+            else
+                slideDir.y = 0;
+
+            if (angle > slideLimit && status != Status.sliding)
+            {
+                Crouch();
+                slideDir = slopeDir;
+                controlledSlide = false;
+                slideTime = slideBlendTime;
+                ChangeStatus(Status.sliding, SlideIK);
+            }
+        }
+
         //Check to slide when running
-        if(playerInput.crouch && canSlide())
+        if (playerInput.crouch && canSlide())
         {
             ChangeStatus(Status.sliding, SlideIK);
-            slideDir = transform.forward;
+            slideDir = slideOnGround;
             movement.controller.height = crouchHeight;
             controlledSlide = true;
             slideDownward = 0f;
@@ -343,26 +374,6 @@ public class PlayerController : MonoBehaviour
                 Crouch();
             else if (!Uncrouch()) //Try to uncrouch, if this is false then we cannot uncrouch
                 Crouch(); //So just keep crouched
-        }
-
-        if (Physics.Raycast(transform.position, -Vector3.up, out var hit, rayDistance))
-        {
-            float angle = Vector3.Angle(hit.normal, Vector3.up);
-            if (angle > 0 && movement.moveDirection.y < 0)
-            {
-                Vector3 hitNormal = hit.normal;
-                slideDir = Vector3.ClampMagnitude(new Vector3(hitNormal.x, -hitNormal.y, hitNormal.z), 1f);
-                Vector3.OrthoNormalize(ref hitNormal, ref slideDir);
-                if (angle > slideLimit && status != Status.sliding)
-                {
-                    Crouch();
-                    controlledSlide = false;
-                    slideTime = slideBlendTime;
-                    ChangeStatus(Status.sliding, SlideIK);
-                }
-            }
-            else
-                slideDir.y = 0;
         }
     }
 
