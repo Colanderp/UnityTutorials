@@ -36,7 +36,16 @@ public class TransformHelper : MonoBehaviour
         foreach(Transform child in t.GetComponentInChildren<Transform>())
         {
             if (child == t) continue;
+            DeleteAllChildren(child);
             DestroyImmediate(child.gameObject);
+        }
+    }
+    public static void ActivateAllChildren(Transform t, bool active)
+    {
+        foreach (Transform child in t.GetComponentInChildren<Transform>())
+        {
+            if (child == t) continue;
+            child.gameObject.SetActive(active);
         }
     }
 
@@ -86,9 +95,8 @@ public class TransformData
 
     public TransformData(Transform t)
     {
-        position = t.position;
-        eulerAngles = t.eulerAngles;
+        position = t.localPosition;
+        eulerAngles = t.localEulerAngles;
         scale = t.localScale;
     }
-
 }
