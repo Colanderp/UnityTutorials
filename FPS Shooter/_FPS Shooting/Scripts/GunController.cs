@@ -676,6 +676,9 @@ public class GunController : MonoBehaviour
                 handler.SetAnimations(addGun.gunMotions);
 
             selectedGun = handler.gunIndex;
+            for(int i = 0; i < gunInventory.Count; i++)
+                gunInventory[i].gameObject.SetActive(i == selectedGun);
+
             handler.SetAmmo();
             handler.bulletSpawn = handler.gameObject.GetComponentInChildren<GunBulletSpawn>();
 
