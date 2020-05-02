@@ -932,8 +932,29 @@ public class PlayerController : MonoBehaviour
         return (Physics.CapsuleCastAll(top, bottom, 0.25f, transform.forward, dis, layer).Length >= 1);
     }
 }
-
 public class IKData
 {
+    public Vector3 handPos;
+    public Vector3 handEulerAngles;
 
+    public Vector3 armElbowPos;
+    public Vector3 armLocalPos;
+
+    public IKData()
+    {
+        handPos = Vector3.zero;
+        handEulerAngles = Vector3.zero;
+        armElbowPos = Vector3.zero;
+        armLocalPos = Vector3.zero;
+
+        //armLocalPos = ArmIKController.defaultArmPos;
+    }
+
+    public TransformData HandData()
+    {
+        TransformData data = new TransformData();
+        data.position = handPos;
+        data.eulerAngles = handEulerAngles;
+        return data;
+    }
 }
