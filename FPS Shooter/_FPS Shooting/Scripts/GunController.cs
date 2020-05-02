@@ -289,7 +289,7 @@ public class GunController : MonoBehaviour
 
     void SwitchWeaponHandler()
     {
-        if (shootingGun) return;
+        if (shootingGun || playerBlocking()) return;
         if (gunSelected())
         {
             float scroll = input.mouseScroll;
