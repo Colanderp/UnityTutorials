@@ -61,8 +61,9 @@ public class DamageObject : PooledObject
 
     public override void Pool()
     {
-        transform.SetParent(null);
-        Destroy(parentAdjuster.gameObject);
+        transform.SetParent(parent);
+        if(parentAdjuster != null)
+            Destroy(parentAdjuster.gameObject);
         parentAdjuster = null;
         base.Pool();
     }
