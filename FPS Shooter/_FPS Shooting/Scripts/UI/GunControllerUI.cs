@@ -42,7 +42,8 @@ public class GunControllerUI : MonoBehaviour
 
     public void UpdateGunUI(GunHandler gunHandler)
     {
-        gunImage.sprite = gunHandler.gun.gunIcon;
+        if(gunHandler.gun.gunIcon != null)
+            gunImage.sprite = gunHandler.gun.gunIcon;
         ammoText.rectTransform.offsetMax = new Vector2(-gunHandler.gun.ammoOffsetX, 0);
         currentGun = gunHandler;
     }

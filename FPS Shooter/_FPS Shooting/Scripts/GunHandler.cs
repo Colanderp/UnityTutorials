@@ -119,8 +119,6 @@ public class GunHandler : MonoBehaviour
 
     public void TakeOutWeapon(UnityAction<int> call)
     {
-        status = GunStatus.takingOut;
-        animator.Play(motions.takeOut, -1, 0);
         if (listener) listener.onTakeOut.Invoke();
 
         onTakeOut.RemoveAllListeners();

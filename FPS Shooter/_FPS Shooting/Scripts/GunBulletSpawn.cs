@@ -13,6 +13,7 @@ public class GunBulletSpawn : MonoBehaviour
 
     public void ShootOutSmoke()
     {
-        smoke.Play();
+        if(smoke != null)
+            smoke.Play();
     }
 }

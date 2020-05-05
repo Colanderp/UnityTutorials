@@ -6,14 +6,64 @@ public class DamageObject : PooledObject
 {
     public LayerMask damageLayer;
     private float damage;
+
+    Transform parentAdjuster;
+    float radius = 0.05f;
+
     public float Damage
     {
         get { return damage; }
         set { damage = value; }
     }
 
+    private void Start()
+    {
+        Collider col = null;
+        if ((col = GetComponent<Collider>()) == null) return;
+        if (col as CapsuleCollider)
+        {
+            radius = (col as CapsuleCollider).radius;
+            return;
+        }
+        if (col as SphereCollider)
+        {
+            radius = (col as SphereCollider).radius;
+            return;
+        }
+    }
+
     public virtual int Simulate()
     {
-        return -1;
+        int simulation = -1;
+        Vector3 dir = -transform.forward;
+        Vector3 pos = transform.position + (transform.forward * 0.125f);
+        if (Physics.Raycast(pos, dir, out var hit, 0.175f))
+        {
+            parentAdjuster = new GameObject().transform;
+            parentAdjuster.position = hit.point;
+
+            parentAdjuster.SetParent(hit.transform);
+            transform.SetParent(parentAdjuster);
+            float dis = Vector3.Distance(hit.point, pos) + 0.05f + radius;
+            if (Physics.SphereCast(pos, radius, dir, out var hitDmg, dis, damageLayer))
+            {
+                DamageZone damaged = hitDmg.transform.GetComponent<DamageZone>();
+                if (damaged != null)
+                {
+                    simulation = Mathf.Max(simulation, 0);
+                    if (damaged.Damage(Damage, 1f))
+                        simulation = 1;
+                }
+            }
+        }
+        return simulation;
+    }
+
+    public override void Pool()
+    {
+        transform.SetParent(null);
+        Destroy(parentAdjuster.gameObject);
+        parentAdjuster = null;
+        base.Pool();
     }
 }

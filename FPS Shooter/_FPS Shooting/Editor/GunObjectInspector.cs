@@ -20,9 +20,13 @@ public class GunObjectInspector : Editor
 
     private SerializedProperty shooting;
     private SerializedProperty firerate;
+
     private SerializedProperty fireDelay;
     private SerializedProperty fireCooldownSpeed;
+    private SerializedProperty canFireWhileDelayed;
+
     private SerializedProperty bulletsPerShot;
+    private SerializedProperty fireWhenPressedUp;
 
     private SerializedProperty burstShot;
     private SerializedProperty burstTime;
@@ -90,9 +94,13 @@ public class GunObjectInspector : Editor
 
         shooting = this.serializedObject.FindProperty("shooting");
         firerate = this.serializedObject.FindProperty("firerate");
+
         fireDelay = this.serializedObject.FindProperty("fireDelay");
         fireCooldownSpeed = this.serializedObject.FindProperty("fireCooldownSpeed");
+        canFireWhileDelayed = this.serializedObject.FindProperty("canFireWhileDelayed");
+        
         bulletsPerShot = this.serializedObject.FindProperty("bulletsPerShot");
+        fireWhenPressedUp = this.serializedObject.FindProperty("fireWhenPressedUp");
 
         burstShot = this.serializedObject.FindProperty("burstShot");
         burstTime = this.serializedObject.FindProperty("burstTime");
@@ -212,13 +220,22 @@ public class GunObjectInspector : Editor
                 EditorGUILayout.PropertyField(burstTime);
             }
 
+            bool isNotAuto = (gun.shooting != GunObject.ShootType.auto);
             EditorGUILayout.PropertyField(fireDelay);
             if (gun.fireDelay > 0)
+            {
                 EditorGUILayout.PropertyField(fireCooldownSpeed);
+                if (isNotAuto)
+                    EditorGUILayout.PropertyField(canFireWhileDelayed);
+                else
+                    gun.canFireWhileDelayed = false;
+
+            }
             else
                 gun.fireCooldownSpeed = 1f;
 
             EditorGUILayout.PropertyField(canFireWhileActing);
+            if (isNotAuto) EditorGUILayout.PropertyField(fireWhenPressedUp);
             EditorGUI.indentLevel--;
         }
         EditorGUILayout.EndVertical();

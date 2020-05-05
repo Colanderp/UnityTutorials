@@ -7,12 +7,18 @@ public class PooledObject : MonoBehaviour
 {
     public float autoPool = 100f;
     private bool inPool = false;
-
     float poolTime;
+
+    protected Transform parent = null;
 
     public bool isInPool
     {
         get { return inPool; }
+    }
+
+    public void SetParent(Transform p)
+    {
+        parent = p;
     }
 
     public virtual void Initialize() //Everytime it gets created
@@ -38,6 +44,7 @@ public class PooledObject : MonoBehaviour
     public virtual void Pool()
     {
         inPool = true;
+        transform.SetParent(parent, false);
         gameObject.SetActive(false);
     }
 }

@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d6acb8369fa349aa4bb06256a6fc7, type: 3}
+  m_Name: Grapple
+  m_EditorClassIdentifier: 
+  prefabName: Grapple Gun
+  prefabObj: {fileID: 6731940528745414440, guid: 404b74a702c46d142b156b9658905429,
+    type: 3}
+  prefabLocalData:
+    position: {x: 0, y: 0, z: -0.05}
+    eulerAngles: {x: 0, y: 0, z: 0}
+    scale: {x: 1, y: 1, z: 1}
+  IK_HandTarget:
+    position: {x: -0.05, y: -0.115, z: -0.2}
+    eulerAngles: {x: 340, y: 22.499998, z: 140}
+    scale: {x: 1, y: 1, z: 1}
+  shootType: 0
+  muzzleFlash: {fileID: 0}
+  impactEffect: {fileID: 0}
+  rigidbodyBullet: {fileID: 0}
+  initialForce: 100
+  additiveForce: 10
+  shooting: 0
+  bulletsPerShot: 1
+  burstShot: 3
+  burstTime: 0.125
+  ammoClip: 12
+  startingClips: 3
+  firerate: 0.25
+  looseAmmoOnReload: 0
+  aimFOV: 60
+  aimDownSpeed: 8
+  ironSightAim:
+    position: {x: 0, y: 0, z: 0}
+    eulerAngles: {x: 0, y: 0, z: 0}
+    scale: {x: 1, y: 1, z: 1}
+  bulletDamage: 10
+  headshotMult: 1.25
+  bulletRange: 100
+  bulletSpread: 0.1
+  aimSpreadMultiplier: 0.2
+  sprintSpreadMultiplier: 1.2
+  aimDownMultiplier: 0.5
+  cyclesInClip: 1
+  recoil:
+    xRecoil:
+      graph:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      multiplier: 1
+    yRecoil:
+      graph:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      multiplier: 1
+    zRecoil:
+      graph:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      multiplier: 1
+    randomizeRecoil: 0
+  animationController: {fileID: 0}
+  gunMotions:
+    idle: 
+    hipfireShoot: 
+    aimedShoot: 
+    reload: 
+    putAway: 
+    takeOut: 
+  gunIcon: {fileID: 0}
+  ammoOffsetX: 180
+  shootClips: []
+  reloadSFX: {fileID: 0}

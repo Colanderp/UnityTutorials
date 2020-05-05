@@ -28,16 +28,17 @@ public class GunController : MonoBehaviour
     public float crouchADSMultiplier = 0.75f;
 
     float fireTimer = 0;
-    float fireDelayTimer = 0;
+    public float fireDelayTimer = 0;
     float crouchValue = 0f;
-    float bulletSpread = 0.01f;
+    public float bulletSpread = 0.01f;
 
 
     int continuousShots = 0;
     int semiCalculations = 16;
     int putAwayGun = -1;
 
-    bool inputUpped = true;
+    bool onShootUp = false;
+    bool lastInput = false;
     bool shootingGun = false;
     List<int> autoReloadGun;
 
@@ -59,7 +60,6 @@ public class GunController : MonoBehaviour
 
     private void Start()
     {
-        inputUpped = true;
         source = GetComponent<AudioSource>();
         helper = GetComponent<GunControllerHelper>();
 
@@ -128,17 +128,29 @@ public class GunController : MonoBehaviour
         if (gunHandler)
         {
             GunObject gun = gunHandler.gun;
+            float actualSpread = bulletSpread;
             float spread = CurrentBulletSpread();
             if (isAiming())
             {
                 spread *= gun.aimSpreadMultiplier;
-                bulletSpread = Mathf.Lerp(bulletSpread, spread, Time.deltaTime * gun.aimDownSpeed * (1f - gun.aimDownMultiplier));
+                actualSpread = Mathf.Lerp(actualSpread, spread, Time.deltaTime * gun.aimDownSpeed * (1f - gun.aimDownMultiplier));
             }
-            else 
-                bulletSpread = Mathf.Lerp(bulletSpread, spread, Time.deltaTime * 4f);
+            else
+                actualSpread = Mathf.Lerp(actualSpread, spread, Time.deltaTime * 4f);
+
+            if (gunHandler.gun.canFireWhileDelayed) {
+                float delaySpreadAdjust = (4f - (DelayPercent() * 3f)) / 4f;
+                actualSpread = Mathf.Lerp(gunHandler.gun.bulletSpread, (spread * delaySpreadAdjust), DelayPercent());
+            }
+            bulletSpread = actualSpread;
         }
         else
             bulletSpread = 0.01f;
+    }
+
+    float DelayPercent()
+    {
+        return (fireDelayTimer / gunHandler.gun.fireDelay);
     }
 
     float CurrentBulletSpread()
@@ -166,7 +178,7 @@ public class GunController : MonoBehaviour
             return;
         }
 
-        float adjust = (gunCanShoot()) ? Time.deltaTime : -(Time.deltaTime * gunHandler.gun.fireCooldownSpeed);
+        float adjust = (gunCanShoot() && input.shooting) ? Time.deltaTime : -(Time.deltaTime * gunHandler.gun.fireCooldownSpeed);
         fireDelayTimer = Mathf.Clamp(fireDelayTimer + adjust, 0, gunHandler.gun.fireDelay);
     }
 
@@ -211,25 +223,35 @@ public class GunController : MonoBehaviour
         if (!gunHandler) return false;
         if (gunHandler.status == GunHandler.GunStatus.reloading) return false;
         if (playerBlocking())
-            return (input.shooting && gunHandler.gun.canFireWhileActing);
+            return gunHandler.gun.canFireWhileActing;
         else
-            return input.shooting;
+            return true;
+    }
+
+    void HandleOnShootUp()
+    {
+        if (input.shooting)
+            lastInput = true;
+        else if (lastInput)
+        {
+            onShootUp = true;
+            lastInput = false;
+        }
+        else
+            onShootUp = false;
     }
 
     void FireGunHandler()
     {
-        if (!input.shooting && !inputUpped)
-        {
-            if(gunHandler.gun.shooting != GunObject.ShootType.auto)
-                fireDelayTimer = 0; //Restart the timer if semi or burst
-            inputUpped = true;
-        }
+        GunObject gun = gunHandler.gun;
+        HandleOnShootUp();
+
+        gunHandler.OnDelayCall(fireDelayTimer);
 
         if (fireTimer > 0)
             fireTimer -= Time.deltaTime;
         else if(gunHandler)
         {
-            gunHandler.OnDelayCall(fireDelayTimer);
 
             if (!shootingGun)
             {
@@ -244,21 +266,32 @@ public class GunController : MonoBehaviour
                 }
 
                 if (fireDelayTimer < gunHandler.gun.fireDelay)
-                    return;
+                {
+                    if (!gun.canFireWhileDelayed) return;
+                }
 
                 if (!gunCanShoot())
                     return;
 
-                if (gunHandler.gun.shooting == GunObject.ShootType.auto)
+                if (gun.shooting == GunObject.ShootType.auto && input.shooting)
                 {
                     continuousShots++;
                     FireGun();
                 }
-                else if (inputUpped)
+                else
                 {
-                    continuousShots = 0;
-                    inputUpped = false;
-                    FireGun();
+                    bool fire = false;
+                    if (gun.fireWhenPressedUp)
+                    {
+                        if (onShootUp) fire = true;
+                    }
+                    else if(input.shooting) fire = true;
+
+                    if (fire)
+                    {
+                        continuousShots = 0;
+                        FireGun();
+                    }
                 }
             }
         }
@@ -366,7 +399,6 @@ public class GunController : MonoBehaviour
         {
             case GunObject.ShootType.semi:
                 PlayShotSFX();
-                fireDelayTimer = 0; //Restart the timer if semi or burst
                 float addTime = gun.firerate / (float)semiCalculations;
                 StartCoroutine(singleShot());
                 if (!gunHandler.ShootGun())
@@ -382,6 +414,7 @@ public class GunController : MonoBehaviour
                     }
                     shootingGun = false;
                 }
+                fireDelayTimer = 0; //Restart the timer if semi or burst
                 break;
             case GunObject.ShootType.auto:
                 PlayShotSFX();
@@ -393,7 +426,6 @@ public class GunController : MonoBehaviour
                 break;
             case GunObject.ShootType.burst:
                 PlayShotSFX();
-                fireDelayTimer = 0; //Restart the timer if semi or burst
                 float shotTime = gun.burstTime / (float)gun.burstShot;
                 StartCoroutine(burstShot());
                 IEnumerator burstShot()
@@ -413,6 +445,7 @@ public class GunController : MonoBehaviour
                     }
                     shootingGun = false;
                 }
+                fireDelayTimer = 0; //Restart the timer if semi or burst
                 break;
         }
     }
@@ -511,9 +544,13 @@ public class GunController : MonoBehaviour
 
         ShotHelper shotHelper = null;
         if((shotHelper = bullet as ShotHelper) != null)
-            shotHelper.Initialize(bulletBody, gun.additiveForce, CreateImpact);
+            shotHelper.Initialize(bulletBody, gun, CreateImpact);
 
-        bulletBody.AddForce(worldDir * gun.initialForce, ForceMode.Impulse);
+        float force = gun.initialForce;
+        if (gunHandler.gun.canFireWhileDelayed)
+            force *= DelayPercent();
+
+        bulletBody.AddForce(worldDir * force, ForceMode.Impulse);
     }
 
     void ApplyRecoil(float overTime)

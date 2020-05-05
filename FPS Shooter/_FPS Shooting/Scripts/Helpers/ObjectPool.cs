@@ -32,6 +32,7 @@ public class ObjectPool
             GameObject clone = GameObject.Instantiate(pooledObj.gameObject, PoolParent);
             clone.transform.name = pooledObj.transform.name;
             obj = clone.GetComponent<PooledObject>();
+            obj.SetParent(PoolParent);
             pool.Add(obj);
         }
 

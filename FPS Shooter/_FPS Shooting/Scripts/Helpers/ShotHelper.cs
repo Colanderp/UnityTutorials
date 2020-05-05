@@ -5,21 +5,22 @@ using UnityEngine.Events;
 
 public class ShotHelper : PooledObject
 {
-    float additiveForce = 0;
     new Rigidbody rigidbody;
-    new Collider collider;
-    UnityAction<Vector3, Vector3> onImpact;
+    protected UnityAction<Vector3, Vector3> onImpact;
+    protected LayerMask dmgLayer;
 
     TrailRenderer tr;
+    GunObject gunShotFrom;
 
-    public void Initialize(Rigidbody body, float addForce, UnityAction<Vector3, Vector3> impactCall)
+    public void Initialize(Rigidbody body, GunObject gun, UnityAction<Vector3, Vector3> impactCall)
     {
         Unpool();
+        gunShotFrom = gun;
+
         rigidbody = body;
         onImpact = impactCall;
         tr = GetComponentInChildren<TrailRenderer>();
 
-        additiveForce = addForce;
         StartCoroutine(changeLayer());
         IEnumerator changeLayer()
         {
@@ -31,7 +32,6 @@ public class ShotHelper : PooledObject
 
     public override void Pool()
     {
-        additiveForce = 0f;
         rigidbody.velocity = Vector3.zero;
         if (tr != null)
             tr.Clear();
@@ -43,10 +43,10 @@ public class ShotHelper : PooledObject
         base.Update();
 
         if (rigidbody)
-            rigidbody.AddForce(transform.forward * additiveForce * Time.deltaTime, ForceMode.Impulse);
+            rigidbody.AddForce(transform.forward * gunShotFrom.additiveForce * Time.deltaTime, ForceMode.Impulse);
     }
 
-    private void OnCollisionEnter(Collision collision)
+    public virtual void OnCollisionEnter(Collision collision)
     {
         ContactPoint collisionPoint = collision.GetContact(0);
         onImpact.Invoke(collisionPoint.point, collisionPoint.normal);

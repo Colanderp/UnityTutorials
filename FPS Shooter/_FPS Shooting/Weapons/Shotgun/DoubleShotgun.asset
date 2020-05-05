@@ -1,0 +1,211 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d6acb8369fa349aa4bb06256a6fc7, type: 3}
+  m_Name: DoubleShotgun
+  m_EditorClassIdentifier: 
+  prefabName: Double-Barrel Shotgun
+  prefabObj: {fileID: 1123726650421736746, guid: c994f44f3e5d67e4c938bf04a49560ee,
+    type: 3}
+  prefabLocalData:
+    position: {x: 0, y: 0, z: 0}
+    eulerAngles: {x: 0, y: 270, z: 0}
+    scale: {x: 1, y: 1, z: 1}
+  IK_HandTarget:
+    position: {x: 0, y: 0, z: -0.025}
+    eulerAngles: {x: 350, y: 35, z: 180}
+    scale: {x: 1, y: 1, z: 1}
+  shootType: 0
+  muzzleFlash: {fileID: 1562009970429662917, guid: db55b18670a31b54e9d9479ffd6f8b67,
+    type: 3}
+  impactEffect: {fileID: 6079873397598027568, guid: 9041338dab4da3a4fba0850f079e015e,
+    type: 3}
+  rigidbodyBullet: {fileID: 0}
+  initialForce: 100
+  additiveForce: 10
+  shooting: 0
+  bulletsPerShot: 8
+  burstShot: 3
+  burstTime: 0.125
+  ammoClip: 2
+  startingClips: 8
+  firerate: 0.25
+  looseAmmoOnReload: 1
+  aimFOV: 45
+  aimDownSpeed: 12
+  ironSightAim:
+    position: {x: -0.22, y: 0.125, z: -0.175}
+    eulerAngles: {x: 355, y: 0, z: 0}
+    scale: {x: 1, y: 1, z: 1}
+  bulletDamage: 8
+  headshotMult: 1.1
+  bulletRange: 100
+  bulletSpread: 0.075
+  aimSpreadMultiplier: 0.75
+  sprintSpreadMultiplier: 1
+  aimDownMultiplier: 1
+  cyclesInClip: 1
+  recoil:
+    xRecoil:
+      graph:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 34
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 1
+          value: 0
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 34
+          weightedMode: 0
+          inWeight: 0.33333334
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      multiplier: 0
+    yRecoil:
+      graph:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 1
+          outSlope: 1
+          tangentMode: 34
+          weightedMode: 3
+          inWeight: 0
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 0.25
+          value: 0.25
+          inSlope: -1.1071435
+          outSlope: -1.1071435
+          tangentMode: 34
+          weightedMode: 3
+          inWeight: 0.33333334
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 0.32777774
+          value: 0
+          inSlope: -1.88192
+          outSlope: -1.88192
+          tangentMode: 34
+          weightedMode: 3
+          inWeight: 0.33333334
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 0.36964563
+          value: -0.023008615
+          inSlope: -0.17358421
+          outSlope: -0.17358421
+          tangentMode: 34
+          weightedMode: 0
+          inWeight: 0.33333334
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 0.4833333
+          value: 0
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 3
+          inWeight: 0.33333334
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 1
+          value: 0
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0.33333334
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      multiplier: 4
+    zRecoil:
+      graph:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: -1
+          outSlope: -1
+          tangentMode: 34
+          weightedMode: 3
+          inWeight: 0
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 0.25
+          value: -0.25
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 34
+          weightedMode: 3
+          inWeight: 0.33333334
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 0.5
+          value: 0
+          inSlope: 1
+          outSlope: 1
+          tangentMode: 34
+          weightedMode: 3
+          inWeight: 0.33333334
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 0.75
+          value: 0.25
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 34
+          weightedMode: 0
+          inWeight: 0.33333334
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 1
+          value: 0
+          inSlope: -1
+          outSlope: -1
+          tangentMode: 34
+          weightedMode: 3
+          inWeight: 0.33333334
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      multiplier: 4
+    randomizeRecoil: 0
+  animationController: {fileID: 9100000, guid: 6aff62d9b6174424fbbdec746afc6e3f, type: 2}
+  gunMotions:
+    idle: DBSG_idle
+    hipfireShoot: DBSG_shoot
+    aimedShoot: DBSG_shoot
+    reload: DBSG_reload
+    putAway: DBSG_putAway
+    takeOut: DBSG_takeOut
+  gunIcon: {fileID: 5282243598889293882, guid: 36987911bc800964ebe5a82bae41c9a9, type: 3}
+  ammoOffsetX: 160
+  shootClips:
+  - {fileID: 8300000, guid: d71d1210a978db446b99c67215d2d4c2, type: 3}
+  reloadSFX: {fileID: 8300000, guid: 2f36cc68e180b9143b6494b92159d6ad, type: 3}

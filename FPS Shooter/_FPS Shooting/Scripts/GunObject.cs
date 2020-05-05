@@ -37,8 +37,10 @@ public class GunObject : ScriptableObject
     public float fireDelay = 0f; //0 to shoot instantly
     [Range(0f, 2f)]
     public float fireCooldownSpeed = 1f; //speed in which the gun cools down
+    public bool canFireWhileDelayed = false; //Shoot while delay is active (affects spread)
     public bool looseAmmoOnReload = false;
     public bool canFireWhileActing = true;
+    public bool fireWhenPressedUp = false; //Only for burst and semi
 
     //[Header("Aim Variables")]
     public float aimFOV = 60f;
