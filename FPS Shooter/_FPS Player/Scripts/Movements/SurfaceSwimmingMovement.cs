@@ -3,20 +3,24 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[DisallowMultipleComponent]
 public class SurfaceSwimmingMovement : MovementType
 {
     [SerializeField]
     private LayerMask topWaterLayer;
     [HideInInspector]
     public Transform cameraMovement;
+    [HideInInspector]
+    public bool onWaterSurface;
+    [HideInInspector]
+    public bool isInWater;
 
-    bool isInWater;
     bool canJumpOutOfWater;
 
     float treadTime;
     UnderwaterSwimmingMovement underwater;
 
-    void StartSwim()
+    public void StartSwim()
     {
         StartCoroutine(startSwimming());
         IEnumerator startSwimming()
@@ -54,8 +58,10 @@ public class SurfaceSwimmingMovement : MovementType
         return waterLevel;
     }
 
-    public void WithinWaterTop()
+    public void WithinWaterTop(bool onSurface)
     {
+        onWaterSurface = onSurface;
+        if (!onWaterSurface) return;
         float wantedYPos = getWaterLevel();
         float dif = transform.position.y - wantedYPos;
         if ((int)playerStatus < 9) //If we are not swimming
@@ -124,6 +130,12 @@ public class SurfaceSwimmingMovement : MovementType
         }
 
         movement.Move(move, 1f, Mathf.Clamp(swimAdjust * 0.5f, 0f, Mathf.Infinity));
+    }
+
+    public override void Check(bool canInteract)
+    {
+        if (!isInWater && !onWaterSurface && playerStatus == changeTo)
+            player.ChangeStatus(Status.walking);
     }
 
     public override IKData IK()

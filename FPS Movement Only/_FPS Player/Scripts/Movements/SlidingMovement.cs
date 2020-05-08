@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
+[DisallowMultipleComponent]
 public class SlidingMovement : MovementType
 {
     public FloatRange slideSpeed = new FloatRange(7.0f, 12.0f);
