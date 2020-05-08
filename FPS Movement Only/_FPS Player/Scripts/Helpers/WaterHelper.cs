@@ -7,25 +7,27 @@ public class WaterHelper : MonoBehaviour
     public enum WaterType { top, underwater }
     public WaterType type;
     PlayerController player = null;
+    SurfaceSwimmingMovement swimming = null;
 
     private void OnTriggerEnter(Collider other)
     {
         player = other.GetComponent<PlayerController>();
+        swimming = player.GetSwimmingMovement();
     }
 
     private void OnTriggerStay(Collider other)
     {
-        if (player == null) return; //if you didn't get a component then it will be null so don't continue
+        if (swimming == null) return; //if you didn't get a component then it will be null so don't continue
         if (type == WaterType.top)
-            player.WithinWaterTop();
+            swimming.WithinWaterTop();
         else
-            player.CurrentlyInWater(true);
+            swimming.CurrentlyInWater(true);
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (player == null) return; //if you didn't get a component then it will be null so don't continue
+        if (swimming == null) return; //if you didn't get a component then it will be null so don't continue
         if (type != WaterType.top)
-            player.CurrentlyInWater(false);
+            swimming.CurrentlyInWater(false);
     }
 }

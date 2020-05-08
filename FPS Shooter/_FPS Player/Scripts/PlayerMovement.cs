@@ -8,7 +8,6 @@ public class PlayerMovement : InterpolatedTransform
 {
     public float walkSpeed = 4.0f;
     public float runSpeed = 8.0f;
-    public FloatRange slideSpeed = new FloatRange(7.0f, 12.0f);
     public float crouchSpeed = 2f;
     [SerializeField]
     private float jumpSpeed = 8.0f;

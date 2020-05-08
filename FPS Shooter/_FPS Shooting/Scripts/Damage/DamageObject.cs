@@ -8,7 +8,7 @@ public class DamageObject : PooledObject
     private float damage;
 
     Transform parentAdjuster;
-    float radius = 0.05f;
+    float size = 0.05f;
 
     public float Damage
     {
@@ -22,12 +22,12 @@ public class DamageObject : PooledObject
         if ((col = GetComponent<Collider>()) == null) return;
         if (col as CapsuleCollider)
         {
-            radius = (col as CapsuleCollider).radius;
+            size = (col as CapsuleCollider).radius;
             return;
         }
         if (col as SphereCollider)
         {
-            radius = (col as SphereCollider).radius;
+            size = (col as SphereCollider).radius;
             return;
         }
     }
@@ -44,8 +44,8 @@ public class DamageObject : PooledObject
 
             parentAdjuster.SetParent(hit.transform);
             transform.SetParent(parentAdjuster);
-            float dis = Vector3.Distance(hit.point, pos) + 0.05f + radius;
-            if (Physics.SphereCast(pos, radius, dir, out var hitDmg, dis, damageLayer))
+            float dis = Vector3.Distance(hit.point, pos) + 0.05f + size;
+            if (Physics.SphereCast(pos, size, dir, out var hitDmg, dis, damageLayer))
             {
                 DamageZone damaged = hitDmg.transform.GetComponent<DamageZone>();
                 if (damaged != null)
