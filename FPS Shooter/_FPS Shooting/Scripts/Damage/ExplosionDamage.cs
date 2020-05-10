@@ -47,7 +47,12 @@ public class ExplosionDamage : DamageObject
         Vector3 pos = transform.position + (transform.forward * 0.125f);
         if (Physics.Raycast(pos, ringDir, out var hit, (radius - 0.125f)))
         {
+            float dmg = Damage / (float)hitsForFullDmg;
             float dis = Vector3.Distance(hit.point, pos) + 0.05f;
+            Rigidbody body = null;
+            if ((body = hit.transform.GetComponent<Rigidbody>()) != null)
+                body.AddForceAtPosition(ringDir * dmg, hit.point, ForceMode.Force);
+
             if (Physics.Raycast(pos, ringDir, out var hitDmg, dis, damageLayer))
             {
                 Debug.DrawRay(pos, ringDir * dis, Color.red);
@@ -55,7 +60,7 @@ public class ExplosionDamage : DamageObject
                 if (damaged != null)
                 {
                     simulation = Mathf.Max(simulation, 0);
-                    if (damaged.Damage(Damage / (float)hitsForFullDmg, 1f))
+                    if (damaged.Damage(dmg, 1f))
                         simulation = 1;
                 }
             }

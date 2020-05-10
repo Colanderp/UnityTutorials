@@ -24,24 +24,27 @@ public class GunControllerHelper : MonoBehaviour
 
         controller = GetComponent<GunController>();
         foreach (GunHandler g in controller.gunInventory)
-        {
-            GunObject gun = g.gun;
-            g.gameObject.SetActive(true);
-            g.Initialize();
-
-            if(gun.shootType == GunObject.GunType.rigidbody && gun.rigidbodyBullet)
-            {
-                ObjectPool bulletPool = getFromPool(gun, gun.rigidbodyBullet, ref bulletPools);
-                g.SetBulletPool(bulletPool.getPool);
-            }
-
-            if (gun.impactEffect == null) continue;
-            ObjectPool impactPool = getFromPool(gun, gun.impactEffect, ref impactPools);
-            g.SetImpactPool(impactPool.getPool);
-        }
+            InitializeGun(g);
 
         if ((overlayAdjuster = GetComponentInParent<OverlayAdjuster>()) != null)
             overlayAdjuster.GetScopes();
+    }
+
+    public void InitializeGun(GunHandler handler)
+    {
+        GunObject gun = handler.gun;
+        handler.gameObject.SetActive(true);
+        handler.Initialize();
+
+        if (gun.shootType == GunObject.GunType.rigidbody && gun.rigidbodyBullet)
+        {
+            ObjectPool bulletPool = getFromPool(gun, gun.rigidbodyBullet, ref bulletPools);
+            handler.SetBulletPool(bulletPool.getPool);
+        }
+
+        if (gun.impactEffect == null) return;
+        ObjectPool impactPool = getFromPool(gun, gun.impactEffect, ref impactPools);
+        handler.SetImpactPool(impactPool.getPool);
     }
 
     ObjectPool getFromPool(GunObject gun, PooledObject target, ref List<ObjectPool> fromPool)

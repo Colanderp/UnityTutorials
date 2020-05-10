@@ -201,6 +201,7 @@ public class GunHandler : MonoBehaviour
 
     public void SetAnimations(GunAnimations animations)
     {
+        if (motions == null) motions = new GunAnimations();
         motions.SetAnimations(animations);
     }
 
@@ -240,6 +241,10 @@ public class GunAnimations
     public string reload = "reload";
     public string putAway = "putAway";
     public string takeOut = "takeOut";
+
+    public GunAnimations()
+    {
+    }
 
     public GunAnimations(string i, string h, string a, string r, string p, string t)
     {

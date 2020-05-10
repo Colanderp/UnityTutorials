@@ -511,8 +511,11 @@ public class GunController : MonoBehaviour
 
             impactPos = hit.point;
             CreateImpact(impactPos, hit.normal);
-            if(damaged != null) //If we hit something we should damage
-                ui.ShowHitmarker(damaged.Damage(gun.bulletDamage, gun.headshotMult)); //Damages and shows hitmarker
+            if (damaged != null) //If we hit something we should damage
+            {
+                if (!damaged.DamageableAlreadyDead())
+                    ui.ShowHitmarker(damaged.Damage(gun.bulletDamage, gun.headshotMult)); //Damages and shows hitmarker
+            }
         }
 
         Vector3[] pos = { gunHandler.bulletSpawn.transform.position, impactPos };
@@ -626,7 +629,6 @@ public class GunController : MonoBehaviour
         }
     }
 
-#if UNITY_EDITOR
     [ExecuteInEditMode]
     void RemoveBlanks()
     {
@@ -648,11 +650,16 @@ public class GunController : MonoBehaviour
             gunInventory[i].gunIndex = i;
     }
 
+#if UNITY_EDITOR
     static readonly string playerPrefabPath = "Assets/_FPS Shooting/ShooterPlayer.prefab";
     //Return the GunHandler if we already have the gun, otherwise return null
     [ExecuteInEditMode]
     public void AddGun(GunObject addGun)
     {
+        if (Application.isPlaying){
+            Debug.LogWarning("ONLY CALL THIS OUTSIDE OF PLAY");
+            return;
+        }
         RemoveBlanks();
         //Find where to place this gun
         PrefabHandler playerPrefab = new PrefabHandler(FindObjectOfType<PlayerController>().transform, playerPrefabPath);
@@ -726,6 +733,73 @@ public class GunController : MonoBehaviour
 
         playerPrefab.RecreatePrefab();
     }
+#endif
+
+    public void AddGunTemporarily(GunObject addGun) //Will not change the prefab, this should be called if the game is running
+    {
+        RemoveBlanks();
+        //Find where to place this gun
+        GunHandler handler = gunInventory.Find(x => x.gun.GetHashCode() == addGun.GetHashCode());
+        if (handler == null) //If we did not find a handler with the gun using the gun name
+        {
+            GameObject gunParent = new GameObject();
+            gunParent.transform.name = addGun.prefabName;
+            gunParent.transform.SetParent(this.transform);
+            TransformHelper.ResetLocalTransform(gunParent.transform);
+
+            Animator ani = gunParent.AddComponent(typeof(Animator)) as Animator;
+            if (addGun.animationController != null)
+                ani.runtimeAnimatorController = addGun.animationController;
+
+            handler = gunParent.AddComponent(typeof(GunHandler)) as GunHandler;
+
+            handler.gun = addGun;
+            handler.handIKTarget = new GameObject().transform;
+            handler.handIKTarget.name = "IK_Hand";
+            handler.handIKTarget.SetParent(gunParent.transform);
+            TransformHelper.SetLocalTransformData(handler.handIKTarget, addGun.IK_HandTarget);
+
+            gunInventory.Add(handler);
+            handler.gunIndex = gunInventory.Count - 1;
+        }
+        else
+        {
+            Debug.Log("Already have gun named : " + addGun.prefabName + " [UPDATING GUN]");
+
+            handler.transform.SetParent(this.transform);
+            TransformHelper.ResetLocalTransform(handler.transform);
+
+            if (addGun.animationController != null)
+            {
+                Animator ani = handler.gameObject.GetComponent<Animator>();
+                ani.runtimeAnimatorController = addGun.animationController;
+            }
+
+            handler.gun = addGun;
+            handler.handIKTarget.SetParent(handler.transform.parent);
+            TransformHelper.DeleteAllChildren(handler.transform);
+            handler.handIKTarget.SetParent(handler.transform);
+            TransformHelper.SetLocalTransformData(handler.handIKTarget, addGun.IK_HandTarget);
+        }
+
+        if (addGun.prefabObj != null)
+            CreateGunPrefab(handler);
+        if (addGun.animationController != null)
+            handler.SetAnimations(addGun.gunMotions);
+
+        handler.SetAmmo();
+        handler.bulletSpawn = handler.gameObject.GetComponentInChildren<GunBulletSpawn>();
+        helper.InitializeGun(handler);
+        handler.gameObject.SetActive(false);
+
+        //Swap to new gun
+        putAwayGun = selectedGun;
+        source.Stop(); //Stop reloading SFX if playing
+        fireDelayTimer = 0; //Reset the fire delay
+        SelectedGun().PutAwayWeapon(() => TakeOutSelectedGun());
+        selectedGun = handler.gunIndex;
+        status = GunControlStatus.swapping;
+    }
 
     [ExecuteInEditMode]
     void CreateGunPrefab(GunHandler handler)
@@ -734,5 +808,4 @@ public class GunController : MonoBehaviour
         gun.transform.SetParent(handler.transform);
         TransformHelper.SetLocalTransformData(gun.transform, handler.gun.prefabLocalData);
     }
-#endif
 }

@@ -7,17 +7,25 @@ public class DamageZone : MonoBehaviour
     public enum Zone { body, head }
     public Zone damageZone;
 
-    Damagable damagable;
+    Damageable damageable;
 
     private void Start()
     {
-        damagable = GetComponentInParent<Damagable>();
+        damageable = GetComponentInParent<Damageable>();
+    }
+
+    public bool DamageableAlreadyDead()
+    {
+        if (damageable == null) return false;
+        return damageable.isDead();
     }
 
     public bool Damage(float dmg, float headMult) // Returns true if you killed them
     {
+        if (damageable == null) return false;
+
         float overallDmg = dmg;
         overallDmg *= (damageZone == Zone.head) ? headMult : 1f;
-        return damagable.Damage(overallDmg);
+        return damageable.Damage(overallDmg);
     }
 }

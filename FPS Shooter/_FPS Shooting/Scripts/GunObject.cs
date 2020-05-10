@@ -88,6 +88,13 @@ public class GunObject : ScriptableObject
         return shootClips[Random.Range(0, shootClips.Length)];
     }
 
+    public void AddTempGunToPlayer() //The difference here is that it will not change the ArmIk or Prefab varaibles
+    {
+        GunController controller = null;
+        if ((controller = FindObjectOfType<GunController>()) != null)
+            controller.AddGunTemporarily(this);
+    }
+
 #if UNITY_EDITOR
     public void GivePlayerGun()
     {

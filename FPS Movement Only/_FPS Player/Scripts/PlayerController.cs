@@ -333,7 +333,7 @@ public class IKData
         handPos = Vector3.zero;
         handEulerAngles = Vector3.zero;
         armElbowPos = Vector3.zero;
-        //armLocalPos = ArmIKController.defaultArmPos;
+        armLocalPos = Vector3.zero;
     }
 
     public TransformData HandData()

@@ -7,6 +7,8 @@ public class AmmoBoxInteractable : Interactable
     public override void Start()
     {
         base.Start();
-        onInteract.AddListener(FindObjectOfType<GunController>().RefillAmmo);
+        GunController guns = null;
+        if((guns = FindObjectOfType<GunController>()) != null)
+            onInteract.AddListener(guns.RefillAmmo);
     }
 }

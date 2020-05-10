@@ -50,9 +50,12 @@ public class DamageObject : PooledObject
                 DamageZone damaged = hitDmg.transform.GetComponent<DamageZone>();
                 if (damaged != null)
                 {
-                    simulation = Mathf.Max(simulation, 0);
-                    if (damaged.Damage(Damage, 1f))
-                        simulation = 1;
+                    if (!damaged.DamageableAlreadyDead())
+                    {
+                        simulation = Mathf.Max(simulation, 0);
+                        if (damaged.Damage(Damage, 1f))
+                            simulation = 1;
+                    }
                 }
             }
         }
