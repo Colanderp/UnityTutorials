@@ -6,9 +6,7 @@ using UnityEngine.UI;
 public class CrosshairController : MonoBehaviour
 {
     public Crosshair crosshair;
-    float spread = 0.01f;
-    
-    // Update is called once per frame
+
     void Update()
     {
         crosshair.UpdateCrosshair();

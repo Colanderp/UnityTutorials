@@ -71,6 +71,7 @@ public class GunController : MonoBehaviour
         weaponSwaying = GetComponent<HandSway>();
 
         ui = FindObjectOfType<GunControllerUI>();
+        if (ui == null) Debug.LogError("GunControllerUI not found, please add PlayerUI prefab");
         ResetGuns();
     }
 
@@ -85,7 +86,7 @@ public class GunController : MonoBehaviour
         if (gunSelected())
         {
             gunInventory[selectedGun].gameObject.SetActive(true);
-            ui.UpdateGunUI(SelectedGun());
+            if(ui) ui.UpdateGunUI(SelectedGun());
         }
     }
 
@@ -201,14 +202,14 @@ public class GunController : MonoBehaviour
 
             AdjustFOV(isAiming());
             gunHandler.AimDownSights(isAiming());
-            ui.SetCrosshair(isAiming() ? 0.01f : bulletSpread, isAiming());
+            if(ui) ui.SetCrosshair(isAiming() ? 0.01f : bulletSpread, isAiming());
             weaponSwaying.SetSwayMultiplier(isAiming() ? gunHandler.gun.aimDownMultiplier : 1f);
         }
         else
         {
             status = GunControlStatus.none;
             weaponSwaying.SetSwayMultiplier(1f);
-            ui.SetCrosshair(0.01f, true);
+            if (ui) ui.SetCrosshair(0.01f, true);
         }
     }
 
@@ -357,7 +358,7 @@ public class GunController : MonoBehaviour
             putAwayGun = -1;
         }
 
-        ui.UpdateGunUI(gunHandler);
+        if (ui) ui.UpdateGunUI(gunHandler);
         gunHandler.TakeOutWeapon(TakenGunOut);
         gunInventory[selectedGun].gameObject.SetActive(true);
         status = GunControlStatus.takingOut;
@@ -514,7 +515,10 @@ public class GunController : MonoBehaviour
             if (damaged != null) //If we hit something we should damage
             {
                 if (!damaged.DamageableAlreadyDead())
-                    ui.ShowHitmarker(damaged.Damage(gun.bulletDamage, gun.headshotMult)); //Damages and shows hitmarker
+                {
+                    bool killed = damaged.Damage(gun.bulletDamage, gun.headshotMult);
+                    if(ui) ui.ShowHitmarker(killed); //Damages and shows hitmarker
+                }
             }
         }
 
@@ -598,7 +602,7 @@ public class GunController : MonoBehaviour
         dmgImpact.Damage = gun.bulletDamage;
         int simulation = dmgImpact.Simulate();
 
-        if (simulation < 0) return;
+        if (simulation < 0 || !ui) return;
         ui.ShowHitmarker(simulation > 0); //Damages and shows hitmarker
     }
 

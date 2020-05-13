@@ -34,8 +34,9 @@ public class ShotTrailHelper : PooledObject
         }
     }
 
-    void Update()
+    public override void Update()
     {
+        base.Update();
         if (isInPool) return;
         if (render == null) return;
         Vector3 start = render.GetPosition(0);

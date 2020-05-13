@@ -187,7 +187,7 @@ public class PlayerController : MonoBehaviour
         if (animateCamLevel == null) return;
 
         float level = 0f;
-        if(status == Status.crouching || status == Status.sliding || status == Status.vaulting || status == Status.climbingLedge)
+        if(status == Status.crouching || status == Status.sliding || status == Status.vaulting || status == Status.climbingLedge || status == Status.underwaterSwimming)
             level = crouchCamAdjust;
         animateCamLevel.UpdateLevel(level);
     }
@@ -226,7 +226,10 @@ public class PlayerController : MonoBehaviour
         if (movement.grounded && playerInput.Jump())
         {
             if (status == Status.crouching)
-                Uncrouch();
+            {
+                if (!Uncrouch()) 
+                    return;
+            }
 
             movement.Jump(Vector3.up, 1f);
             playerInput.ResetJump();
@@ -263,22 +266,22 @@ public class PlayerController : MonoBehaviour
         if (playerInput.crouch)
         {
             if (status != Status.crouching)
-                Crouch();
+                Crouch(true);
             else
                 Uncrouch();
         }
     }
 
-    public void Crouch()
+    public void Crouch(bool setStatus)
     {
         movement.controller.height = crouchHeight;
-        ChangeStatus(Status.crouching);
+        if(setStatus) ChangeStatus(Status.crouching);
     }
 
     public bool Uncrouch()
     {
         Vector3 bottom = transform.position - (Vector3.up * ((crouchHeight / 2) - info.radius));
-        bool isBlocked = Physics.SphereCast(bottom, info.radius, Vector3.up, out var hit, info.height - info.radius);
+        bool isBlocked = Physics.SphereCast(bottom, info.radius, Vector3.up, out var hit, info.height - info.radius, collisionLayer);
         if (isBlocked) return false; //If we have something above us, do nothing and return
         movement.controller.height = info.height;
         ChangeStatus(Status.walking);

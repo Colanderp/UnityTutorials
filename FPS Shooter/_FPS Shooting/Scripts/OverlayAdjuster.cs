@@ -11,7 +11,6 @@ public class OverlayAdjuster : MonoBehaviour
     public float checkRadius = 0.125f;
     public float checkDis = 1.25f;
 
-    float zAdjustment = 0;
     Vector3 localPos;
 
     public List<CameraAdjust> scopes;

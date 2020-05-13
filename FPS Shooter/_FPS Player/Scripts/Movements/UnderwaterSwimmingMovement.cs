@@ -24,7 +24,7 @@ public class UnderwaterSwimmingMovement : MovementType
 
     public override void Check(bool canInteract)
     {
-        if (!swimming.isInWater && playerStatus == changeTo)
+        if (!swimming.isInWater() && playerStatus == changeTo)
             player.ChangeStatus(Status.walking);
     }
 }

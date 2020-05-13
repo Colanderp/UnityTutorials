@@ -44,6 +44,7 @@ public class PooledObject : MonoBehaviour
     public virtual void Pool()
     {
         inPool = true;
+        poolTime = autoPool;
         transform.SetParent(parent, false);
         gameObject.SetActive(false);
     }

@@ -69,7 +69,7 @@ public class SlidingMovement : MovementType
 
             if (angle > slideLimit && playerStatus != changeTo)
             {
-                player.Crouch();
+                player.Crouch(true);
                 slideDir = slopeDir;
                 controlledSlide = false;
                 slideTime = slideBlendTime;
@@ -118,9 +118,9 @@ public class SlidingMovement : MovementType
         else if (playerStatus == changeTo)
         {
             if (playerInput.crouching)
-                player.Crouch();
+                player.Crouch(true);
             else if (!player.Uncrouch()) //Try to uncrouch, if this is false then we cannot uncrouch
-                player.Crouch(); //So just keep crouched
+                player.Crouch(true); //So just keep crouched
         }
     }
 

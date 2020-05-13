@@ -30,7 +30,6 @@ public class HandSway : InterpolatedTransformFull
     private Vector2 rawLook;
     private Vector2 look;
     private float swayMultiplier;
-    bool startingUp = true;
 
     public override void Start()
     {
@@ -60,8 +59,8 @@ public class HandSway : InterpolatedTransformFull
         float tiltZ = look.x * tiltAngle * mult;
         float tiltX = look.y * tiltAngle * mult;
 
-        Clamp(factorX, -maxAmount, maxAmount);
-        Clamp(factorY, -maxAmount, maxAmount);
+        factorX = Clamp(factorX, -maxAmount, maxAmount);
+        factorY = Clamp(factorY, -maxAmount, maxAmount);
 
         Vector3 finalPos = new Vector3(startingPos.x + factorX, startingPos.y + factorY, startingPos.z);
         transform.localPosition = Vector3.Lerp(transform.localPosition, finalPos, Time.fixedDeltaTime * swaySmoothing);
