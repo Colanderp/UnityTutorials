@@ -49,7 +49,6 @@ public class SlidingMovement : MovementType
     public override void Check(bool canInteract)
     {
         if (!canInteract) return;
-        Vector3 slideOnGround = transform.forward;
         if (Physics.Raycast(transform.position, -Vector3.up, out var hit, player.info.rayDistance, player.collisionLayer)) //Don't hit the player
         {
             float angle = Vector3.Angle(hit.normal, Vector3.up);
@@ -57,7 +56,6 @@ public class SlidingMovement : MovementType
 
             Vector3 slopeDir = Vector3.ClampMagnitude(new Vector3(hitNormal.x, -hitNormal.y, hitNormal.z), 1f);
             Vector3.OrthoNormalize(ref hitNormal, ref slopeDir);
-            Vector3.OrthoNormalize(ref hitNormal, ref slideOnGround);
 
             if (angle > 0 && playerStatus == changeTo) //Adjust to slope direction
             {
@@ -87,7 +85,7 @@ public class SlidingMovement : MovementType
         if (playerInput.crouch && canSlide())
         {
             player.ChangeStatus(changeTo, IK);
-            slideDir = slideOnGround;
+            slideDir = transform.forward;
             movement.controller.height = player.crouchHeight;
             controlledSlide = true;
             slideDownward = 0f;
