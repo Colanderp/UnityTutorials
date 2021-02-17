@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class CameraMovement : MonoBehaviour
 {
+    PlayerInput playerInput;
     Vector2 _mouseAbsolute;
     Vector2 _smoothMouse;
 
@@ -13,6 +14,8 @@ public class CameraMovement : MonoBehaviour
     private Vector2 clampInDegrees = new Vector2(360, 180);
     [SerializeField]
     private Vector2 sensitivity = new Vector2(2, 2);
+    [SerializeField]
+    private Vector2 ADSSensitivity = new Vector2(1, 1);
     [SerializeField]
     private Vector2 smoothing = new Vector2(3, 3);
     [SerializeField]
@@ -28,6 +31,7 @@ public class CameraMovement : MonoBehaviour
         // Set target direction for the character body to its inital state.
         if (characterBody)
             targetCharacterDirection = characterBody.transform.localRotation.eulerAngles;
+            playerInput = characterBody.GetComponent<PlayerInput>();
     }
 
     void Update()
@@ -40,8 +44,16 @@ public class CameraMovement : MonoBehaviour
 
         // Get raw mouse input for a cleaner reading on more sensitive mice.
         var mouseDelta = new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));
+       
         // Scale input against the sensitivity setting and multiply that against the smoothing value.
-        mouseDelta = Vector2.Scale(mouseDelta, new Vector2(sensitivity.x * smoothing.x, sensitivity.y * smoothing.y));
+        if (characterBody && playerInput.aiming)
+        {
+            mouseDelta = Vector2.Scale(mouseDelta, new Vector2(ADSSensitivity.x * smoothing.x, ADSSensitivity.y * smoothing.y));
+        }
+        else
+        {
+            mouseDelta = Vector2.Scale(mouseDelta, new Vector2(sensitivity.x * smoothing.x, sensitivity.y * smoothing.y));
+        }
 
         // Interpolate mouse movement over time to apply smoothing delta.
         _smoothMouse.x = Mathf.Lerp(_smoothMouse.x, mouseDelta.x, 1f / smoothing.x);
